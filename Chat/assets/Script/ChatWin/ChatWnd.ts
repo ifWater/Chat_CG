@@ -211,8 +211,8 @@ export default class ChatWnd extends BaseWindow{
 
     //获取答题结果成功
     public ReqTheResSuccess(param:any):void{
-        let data:any = param.data;
-        WindowManager.GetInstance().OpenWindow("EndWnd","EndWnd",new EndWnd(),data,0);
+        let data: any = param.data;
+        WindowManager.GetInstance().OpenWindow<EndWnd>("EndWnd", "EndWnd", EndWnd, data, 0);
 
     }
     //获取答题结果失败

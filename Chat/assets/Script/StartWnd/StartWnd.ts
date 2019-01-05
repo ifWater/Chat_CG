@@ -33,7 +33,6 @@ export default class StartWnd extends BaseWindow{
     }
 
     public StartBtn():void{
-        console.log("aaaa")
         if(this._isLogin == false){
             this.GetDataDef();
         }
@@ -51,7 +50,7 @@ export default class StartWnd extends BaseWindow{
     //拉取服务器信息成功
     public GetDataSuccess(data:any):void{
         let resData = data.data;
-        WindowManager.GetInstance().OpenWindow("Package1","MainUI", new ChooseWin(),resData,1);
+        WindowManager.GetInstance().OpenWindow<ChooseWin>("Package1","MainUI", ChooseWin,resData,1);
         this._isCanClick = true;
     }
 

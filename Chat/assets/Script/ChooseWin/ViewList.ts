@@ -4,6 +4,7 @@ import ChatWnd from '../ChatWin/ChatWnd';
 import ScrollPaneUp from './ScrollPaneUp';
 import FaceBookSDK from '../Base/FaceBookSDK';
 import MessageMangager from '../Base/MessageManager';
+import DelayTimeManager from '../Base/DelayTimeManager';
 export default class ViewList extends fgui.GList{
     private _list:fgui.GList;
     private _data:any = [];
@@ -63,7 +64,7 @@ export default class ViewList extends fgui.GList{
                 let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
                 footer.SetRefreshState(3);
                 this._list.scrollPane.lockFooter(footer.sourceHeight);
-                this.ResetRefreshCom();
+                DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
             }
             this._data = this._data.concat(data);
             this._recordLastNum = this._list.numItems;
@@ -75,7 +76,7 @@ export default class ViewList extends fgui.GList{
                 let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
                 footer.SetRefreshState(4);
                 this._list.scrollPane.lockFooter(footer.sourceHeight);
-                this.ResetRefreshCom();
+                DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
             }
         }
         
@@ -88,7 +89,7 @@ export default class ViewList extends fgui.GList{
             let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
             footer.SetRefreshState(4);
             this._list.scrollPane.lockFooter(footer.sourceHeight);
-            this.ResetRefreshCom();
+            DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
         }
     }
 
@@ -142,7 +143,7 @@ export default class ViewList extends fgui.GList{
         openData["NextOrder"] = this._nowClickItem.GetStartNum();
         openData["CategoryContentID"] = this._ID;
         //打开聊天界面
-        WindowManager.GetInstance().OpenWindow("Chat","ChatWnd",new ChatWnd(),openData,1);
+        WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData,1);
 
     }
 

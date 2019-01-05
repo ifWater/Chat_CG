@@ -51,7 +51,7 @@ export default class ChooseWin extends BaseWindow{
 
     //点击搜索区域,,跳转窗口
     public ClickSearchCall():void{
-        WindowManager.GetInstance().OpenWindow("SearchWnd","SearchWnd",new SearchWnd());
+        WindowManager.GetInstance().OpenWindow<SearchWnd>("SearchWnd","SearchWnd",SearchWnd);
     }
 
     //初始化列表
