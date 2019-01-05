@@ -1,0 +1,31 @@
+{
+  "ver": "2.2.0",
+  "uuid": "917d725f-52f9-4def-bd6d-3975d20bb12b",
+  "type": "sprite",
+  "wrapMode": "clamp",
+  "filterMode": "bilinear",
+  "premultiplyAlpha": false,
+  "subMetas": {
+    "Chat_atlas0": {
+      "ver": "1.0.3",
+      "uuid": "2898ae30-2da7-4381-bb87-d2e56e5d0f31",
+      "rawTextureUuid": "917d725f-52f9-4def-bd6d-3975d20bb12b",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -272,
+      "offsetY": 357,
+      "trimX": 0,
+      "trimY": 0,
+      "width": 1504,
+      "height": 1334,
+      "rawWidth": 2048,
+      "rawHeight": 2048,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {}
+    }
+  }
+}
