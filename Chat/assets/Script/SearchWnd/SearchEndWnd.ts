@@ -1,36 +1,59 @@
-import WindowManager from '../Base/WindowManager';
-import ViewBtn from './ViewBtn';
-import ChatWnd from '../ChatWin/ChatWnd';
-import ScrollPaneUp from './ScrollPaneUp';
+import BaseWindow from '../Base/BaseWindow';
+import ViewBtn from '../ChooseWin/ViewBtn';
+import ScrollPaneUp from '../ChooseWin/ScrollPaneUp';
 import FaceBookSDK from '../Base/FaceBookSDK';
 import MessageMangager from '../Base/MessageManager';
 import DelayTimeManager from '../Base/DelayTimeManager';
-export default class ViewList extends fgui.GList{
+import ChatWnd from '../ChatWin/ChatWnd';
+import WindowManager from '../Base/WindowManager';
+import SearchWnd from './SearchWnd';
+import ChooseWin from '../ChooseWin/ChooseWin';
+
+export default class SearchEndWnd extends BaseWindow{
     private _list:fgui.GList;
+    private _searchBtn:fgui.GLoader;
+    private _returnBtn:fgui.GLoader;
     private _data:any = [];
     private _isCanClick:boolean = true;
     private _ID:string;
-    private _IsInitList:boolean = false;
     private _InPullRefresh:boolean = false;
     private _nowClickItem:ViewBtn;
 
     private _recordLastNum:number = 0;
-    public constructor(){
-        super();
+    private _recordWord:string;
+
+    OnLoadToExtension(){
+        fgui.UIObjectFactory.setExtension("ui://Package1/viewBtn",ViewBtn);
     }
 
-    protected onConstruct():void{
-        fgui.UIObjectFactory.setExtension("ui://Package1/viewBtn",ViewBtn);
-        this._list = this.getChild("n2").asList;
+    OnCreate(){
+        this._list = this.GetView().getChild("n22").asList;
         this._list.on(fgui.Event.CLICK_ITEM,this.OnItemClickCall,this);
         this._list.on(fgui.Event.PULL_UP_RELEASE,this.OnPullUpToRefresh,this);
         this._list.itemRenderer = this.RenderListView.bind(this);
+        this._searchBtn = this.GetView().getChild("n23").asLoader;
+        this._returnBtn = this.GetView().getChild("n26").asLoader;
+        this._returnBtn.onClick(this.ClickReturnBtn,this);
+        this._searchBtn.onClick(this.ClickInputBtn,this);
     }
 
-    public SetUUID(ID:string):void{
-        this._ID = ID;
+    OnOpen(data:string){
+       this._recordWord = data;
+       this.ReqDataInId();
     }
-    
+
+    OnClose(){
+        this._list.removeChildren();
+    }
+
+    public ClickInputBtn():void{
+        WindowManager.GetInstance().OpenWindow<SearchWnd>("SearchWnd","SearchWnd",SearchWnd,null,1);
+    }
+
+    public ClickReturnBtn():void{
+        WindowManager.GetInstance().OpenWindow<ChooseWin>("Package1","MainUI", ChooseWin,null,1);
+    }
+
     //根据ID向服务器请求相应的数据
     public ReqDataInId():void{
         if(this._InPullRefresh){
@@ -40,9 +63,10 @@ export default class ViewList extends fgui.GList{
         }
         let reqData:object = {};
         reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
-        reqData["CategoryID"] = this._ID;
+        reqData["Keyword"] = this._recordWord;
         reqData["Offset"] = this._list.numItems;
-        let url = "/quce_server/user/GetCategoryContent";
+        let url:string = "/quce_server/user/Search";
+        console.log(reqData)
         MessageMangager.GetInstance().SendMessage(reqData,url,this,this.ReqListDataSuccess,this.ReqListDataDef);
     }
 
@@ -55,7 +79,6 @@ export default class ViewList extends fgui.GList{
 
     //请求列表数据成功
     public ReqListDataSuccess(param:any):void{
-        this._IsInitList = true;
         let data = param.data.CategoryContentInfo;
         console.log("请求列表数据",data);
         if(data != null){
@@ -78,6 +101,9 @@ export default class ViewList extends fgui.GList{
                 this._list.scrollPane.lockFooter(footer.sourceHeight);
                 DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
             }
+            else{
+                console.log("没有信息哟")
+            }
         }
         
     }
@@ -93,19 +119,6 @@ export default class ViewList extends fgui.GList{
         }
     }
 
-    //加载列表
-    public LoadList():void{
-        if(!this._IsInitList){
-            this.ReqDataInId();
-        }
-    }
-
-    public InitList(param:any):void{
-        this._data = param;
-        this._recordLastNum = this._list.numItems;
-        this._list.numItems = param.length;
-        this._IsInitList = true;
-    }
     public RenderListView(idx:number,obj:fgui.GObject):void{
         if(idx < this._recordLastNum){
             return;
@@ -141,9 +154,9 @@ export default class ViewList extends fgui.GList{
 
         let openData:object = {};
         openData["NextOrder"] = this._nowClickItem.GetStartNum();
-        openData["CategoryContentID"] = this._nowClickItem.GetUUID();
+        openData["CategoryContentID"] = this._ID;
         //打开聊天界面
-        WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData);
+        WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData,1);
 
     }
 

@@ -1,3 +1,5 @@
+import ConfigMgr from '../Base/ConfigMgr';
+
 export default class LeftSpriteChatPrefab extends fgui.GComponent{
     private _headIcon:fgui.GLoader;
     private _showIcon:fgui.GLoader;
@@ -16,7 +18,7 @@ export default class LeftSpriteChatPrefab extends fgui.GComponent{
             console.log("传入图片url错误",url);
             return;
         }
-        this._headIcon.url = url;
+        this._headIcon.url = ConfigMgr.ServerIP + url;
     }
 
     public SetShowIcon(url:string,_height:number,_width:number):void{

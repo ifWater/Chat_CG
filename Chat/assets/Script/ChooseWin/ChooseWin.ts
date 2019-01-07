@@ -34,6 +34,7 @@ export default class ChooseWin extends BaseWindow{
 
         this._searchBtn = this._view.getChild("n13").asLoader;
 
+        
         this._searchBtn.onClick(this.ClickSearchCall,this);
 
         this._listTitle.on(fgui.Event.CLICK_ITEM,this.OnItemClickCall,this)

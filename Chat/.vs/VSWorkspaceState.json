@@ -1,7 +1,13 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\assets",
+    "\\assets\\Script",
+    "\\assets\\Script\\Base",
+    "\\assets\\Script\\ChatWin",
+    "\\assets\\Script\\ChooseWin",
+    "\\assets\\Script\\StartWnd"
   ],
-  "SelectedNode": "\\Chat_CocosCreator",
+  "SelectedNode": "\\assets\\Script\\ChatWin\\ShotSpritePrefab.ts",
   "PreviewInSolutionExplorer": false
 }

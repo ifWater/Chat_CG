@@ -2,6 +2,8 @@ import WindowManager from './WindowManager';
 import StartWnd from '../StartWnd/StartWnd';
 import WaitWnd from '../StartWnd/WaitWnd';
 import DelayTimeManager from './DelayTimeManager';
+import SearchEndWnd from '../SearchWnd/SearchEndWnd';
+
 const {ccclass, property} = cc._decorator;
 
 @ccclass

@@ -27,11 +27,12 @@ export default class ViewBtn extends fgui.GButton{
     }
 
     public SetImage(url:string):void{
-        console.log(ConfigMgr.ServerIP + url)
+        // console.log(ConfigMgr.ServerIP + url)
         this._sprite.url = ConfigMgr.ServerIP + url;
     }
 
     public SetUUID(ID:string):void{
+        // console.log(ID);
         this._uuid = ID;
     }
 

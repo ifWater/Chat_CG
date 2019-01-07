@@ -14,4 +14,11 @@ export default abstract class BaseWindow{
     public GetView():fgui.GComponent{
         return this._thisView;
     }
+
+    public SetCullMask(group:string):void{
+        let childs = this._thisView._children;
+        for(let i = 0;i < childs.length;i++){
+            childs[i].node.group = group;
+        }
+    }
 }

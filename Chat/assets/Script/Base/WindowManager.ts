@@ -49,7 +49,7 @@ export default class WindowManager{
     private _OpenWindow<T>(packageName:string,windowName:string,T,param:any = null,WndType:number = 0,WndLayer:number = 0):void{
         let nowWin:WindowRecord = <WindowRecord>{};
         nowWin.windowName = windowName;
-        let isCreate:BaseWindow = this.IsHaveThisWinndow<T>(windowName,T);
+        let isCreate: BaseWindow = this.IsHaveThisWinndow<T>(windowName, T);
         if(isCreate == undefined){
             nowWin.windowScript = new T() as BaseWindow;            
             isCreate = nowWin.windowScript;
@@ -60,7 +60,7 @@ export default class WindowManager{
                 this._WndCom[WndLayer].addChild(_view);
             }
             else if(WndType == 1){
-                this.CloseAllWindow();
+                this.PopLastWnd();
                 this._WndCom[WndLayer].addChild(_view);                
             }
             nowWin.windowScript.SetView(_view);
@@ -68,6 +68,9 @@ export default class WindowManager{
             this._WindowList.push(nowWin);
         }
         else{
+            if(WndType == 1){
+                this.PopLastWnd();
+            }
             isCreate.GetView().visible = true;
         }
         if(param != null){
@@ -79,8 +82,21 @@ export default class WindowManager{
 
     }
 
-    public OpenChildWindow():void{
+    //关闭上一层的窗口
+    public PopLastWnd():void{
+        let ViewList:Array<WindowRecord> = [];
+        for(let i = 0;i<this._WindowList.length;i++){
+            if(this._WindowList[i].view.visible){
+                ViewList.push(this._WindowList[i]);
+            }
+        }
+        
+        // console.log(this._WindowList)
+        ViewList[ViewList.length-1].windowScript.OnClose();
+        ViewList[ViewList.length-1].view.visible = false;
+    }
 
+    public OpenChildWindow():void{
     }
 
     public CloseAllWindow():void{

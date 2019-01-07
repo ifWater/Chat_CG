@@ -6,10 +6,14 @@ import LeftListChatPrefab from './LeftListChatPrefab';
 import QuestionState from './QuestionState';
 import FaceBookSDK from '../Base/FaceBookSDK';
 import EventManager from '../Base/EventManager';
-import{EventEnum,EventFunc,EventDataTwo,EventDataOne} from '../Base/EventEnum';
+import{EventEnum,EventDataThird,EventDataTwo} from '../Base/EventEnum';
 import MessageManager from '../Base/MessageManager';
 import WindowManager from '../Base/WindowManager';
 import EndWnd from '../EndWnd/EndWnd';
+import ShotSpritePrefab from './ShotSpritePrefab';
+import Tools from '../Base/Tools';
+import ChooseWin from '../ChooseWin/ChooseWin';
+import ShareWnd from '../EndWnd/ShareWnd';
 
 interface MessageType{
     Word:string;
@@ -22,7 +26,8 @@ interface MessageType{
     PlayerWord:string;
     QuestionState:string;
     QuestionReturnBtn:string;
-    ScreenShotSprite:string;
+    ScreenShotSprite: string;
+    NeedInput: string;
 }
 
 export default class ChatWnd extends BaseWindow{
@@ -32,6 +37,7 @@ export default class ChatWnd extends BaseWindow{
     private _chatList:fgui.GList;
     private _view:fgui.GComponent;
     private _MessageType:MessageType = {} as MessageType;
+    private _returnBtn:fgui.GLoader;
 
     private _Message:Array<any> = [];
     //服务器定制内容类型ID
@@ -47,7 +53,16 @@ export default class ChatWnd extends BaseWindow{
     private _recordWillSendTxt:string;
 
     //记录上次列表长度
-    private _recordLastNum:number = 0;
+    private _recordLastNum: number = 0;
+
+    //记录是否需要玩家进行输入
+    private _recordIsNeedPlayerInout: boolean = false;
+
+    //记录当前服务器的头像
+    private _recordServerIcon:string;
+
+    //记录第一次需要发送的请求
+    private _recordFirstSendData:any = null;
 
     private _serverData:any;
     private _chooseRes:Array<string>;
@@ -61,6 +76,7 @@ export default class ChatWnd extends BaseWindow{
         fgui.UIObjectFactory.setExtension("ui://Chat/LeftSpriteChat",LeftSpriteChatPrefab);
         fgui.UIObjectFactory.setExtension("ui://Chat/LeftListChat",LeftListChatPrefab)
         fgui.UIObjectFactory.setExtension("ui://Chat/QuestionState",QuestionState);
+        fgui.UIObjectFactory.setExtension("ui://Chat/ShotSprite", ShotSpritePrefab);
     }
 
     OnCreate(){
@@ -70,8 +86,10 @@ export default class ChatWnd extends BaseWindow{
         this._sendBtn = this._view.getChild("n3").asButton;
         this._inputTxt = this._view.getChild("n4").asTextInput;
         this._chatList = this._view.getChild("n5").asList;
+        this._returnBtn = this._view.getChild("n7").asLoader;
         this._inputTxt.on(fgui.Event.TEXT_CHANGE,this.InputTxtChangeCall,this);
         this._sendBtn.onClick(this.SendTxtCall,this);
+        this._returnBtn.onClick(this.ReturnChooseWnd,this);
         
         this._chatList.itemProvider = this.ReturnChatPrefab.bind(this);
         this._chatList.itemRenderer = this.RenderChatListCall.bind(this);
@@ -86,26 +104,59 @@ export default class ChatWnd extends BaseWindow{
         this._MessageType.QuestionState = "QuestionState";
         this._MessageType.QuestionReturnBtn = "ReturnBtn";
         this._MessageType.ScreenShotSprite = "ScreenShot";
+        this._MessageType.NeedInput = "question_user_input_name";
     }
 
     OnOpen(param:any){
         this._categoryContentID = param.CategoryContentID;
-        
+        this._recordFirstSendData = param;
         this._chooseRes = [];
         //向服务器请求聊天数据
         this.ReqChatData(param);
         EventManager.AddEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
         EventManager.AddEventListener(EventEnum.ScreenShotOver,this.ShowScreenShot,this);
+        EventManager.AddEventListener(EventEnum.ReqAgainTest,this.AgainTest,this);
     }
 
     OnClose(){
-        this._chatList.removeChildrenToPool();
+        this._chatList.numItems = 0;
+        this._Message = [];
         EventManager.RemoveEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
+        EventManager.RemoveEventListener(EventEnum.ScreenShotOver,this.ShowScreenShot,this);
+        EventManager.RemoveEventListener(EventEnum.ReqAgainTest,this.AgainTest,this);
+    }
+
+    //再测一次
+    public AgainTest():void{
+        this._chatList.numItems = 0;
+        this._Message = [];
+        this.ReqChatData(this._recordFirstSendData);
+    }
+
+    //返回到选择界面
+    public ReturnChooseWnd():void{
+        WindowManager.GetInstance().CloseWindow<ChatWnd>("ChatWnd",this,ChatWnd);
     }
 
     //截图完毕,在聊天框展示小图片
-    public ShowScreenShot(data:EventDataOne<cc.RenderTexture>){
+    public ShowScreenShot(data:any){
+        // console.log("==>",data);
+        this.SimulatSendSprite(data.param,data.param2,data.param3);
+    }
 
+    //模拟服务器发送图片
+    public SimulatSendSprite(_tex:cc.RenderTexture,_width:number,_height:number): void {
+        let simulateData: object = {};
+        simulateData["QuestionItem"] = {};
+        simulateData["AvaterURL"] = this._recordServerIcon;
+        simulateData["QuestionItem"]["Type"] = this._MessageType.ScreenShotSprite;
+        simulateData["QuestionItem"]["Content"] = {};
+        simulateData["QuestionItem"]["Content"]["Tex"] = _tex;
+        simulateData["QuestionItem"]["Content"]["Width"] = _width;
+        simulateData["QuestionItem"]["Content"]["Height"] = _height;
+        this._Message.push(simulateData);
+        this._recordLastNum = this._chatList.numItems;
+        this._chatList.numItems += 1;
     }
 
     //输入文本的改变
@@ -115,20 +166,31 @@ export default class ChatWnd extends BaseWindow{
 
     //发送输入的文本
     public SendTxtCall():void{
+
         //玩家发送
         let simulateData:object = {};
-        simulateData["QuestionItem"] = {};        
+        simulateData["QuestionItem"] = {};
         simulateData["QuestionItem"]["Type"] = this._MessageType.PlayerWord;
         simulateData["QuestionItem"]["Content"] = {};
         simulateData["QuestionItem"]["Content"]["Text"] = this._recordWillSendTxt;
         this._Message.push(simulateData);
         this._recordLastNum = this._chatList.numItems;
         this._chatList.numItems += 1;
+        if (this._recordIsNeedPlayerInout) {
+            this._recordIsNeedPlayerInout = false;
+            let reqData: object = {};
+            reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
+            reqData["CategoryContentID"] = this._categoryContentID;
+            reqData["InputStr"] = this._recordWillSendTxt;
+            let url = "/quce_server/user/GetResult";
+            MessageManager.GetInstance().SendMessage(reqData, url, this, this.ReqTheResSuccess, this.ReqTheResDef);
+        }
     }
 
     //模拟服务器发送文字
     public SimulateSendServerWord():void{
         let simulateData:object = {};
+        simulateData["AvaterURL"] = this._recordServerIcon;
         simulateData["QuestionItem"] = {};        
         simulateData["QuestionItem"]["Type"] = this._MessageType.Word;
         simulateData["QuestionItem"]["Content"] = {};
@@ -147,6 +209,8 @@ export default class ChatWnd extends BaseWindow{
         reqData["NextOrder"] = param.NextOrder;
         reqData["CategoryContentID"] = param.CategoryContentID;
         let url = "/quce_server/user/QuizChatStep";
+        console.log(reqData);
+
         MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqDataSuccess,this.ReqDataDef);
     }
 
@@ -158,15 +222,18 @@ export default class ChatWnd extends BaseWindow{
         this._Message.push(data);
         this._recordLastNum = this._chatList.numItems;
         this._chatList.numItems += 1;
-        
+        this._recordServerIcon = data.AvaterURL;
         //判断是否继续请求
-        if((data.QuestionItem.Type == this._MessageType.Word)||(data.QuestionItem.Type == this._MessageType.Sprite)){
+        if ((data.QuestionItem.Type == this._MessageType.Word) || (data.QuestionItem.Type == this._MessageType.Sprite)) {
             if(data.QuestionItem.NextOrder != "-1"){
                 let nextParam:object = {};
                 nextParam["NextOrder"] = data.QuestionItem.NextOrder;
                 nextParam["CategoryContentID"] = this._categoryContentID;
                 this.ReqChatData(nextParam);
             }
+        }
+        if (data.QuestionItem.Type == this._MessageType.NeedInput) {
+            this._recordIsNeedPlayerInout = true;
         }
     }
 
@@ -175,9 +242,11 @@ export default class ChatWnd extends BaseWindow{
         console.log("失败了???");
     }
 
-    public PushChooseResCall(data:EventDataTwo<string,string>):void{
-        let str:string = data.param;
-        this._chooseRes.push(str);
+    public PushChooseResCall(data:EventDataTwo<number,string>):void{
+        let chooseStr:string = this._recordNowItem.QuestionItem.Content.Choice[data.param].ChoiceIdentify;
+        let orderStr:string = this._recordNowItem.QuestionItem.Order;
+        let str:string = orderStr + "," + chooseStr;
+        // this._chooseRes.push(str);
 
         //模拟玩家发送
         let simulateData:object = {};
@@ -188,16 +257,15 @@ export default class ChatWnd extends BaseWindow{
         this._Message.push(simulateData);
         this._recordLastNum = this._chatList.numItems;
         this._chatList.numItems += 1;
-
-        if(this._recordNowItem.QuestionItem.Content.Choices[data.param].NextOrder != "-1"){
+        if(this._recordNowItem.QuestionItem.Content.Choice[data.param].NextOrder != "-1"){
             let nextParam:object = {};
-            nextParam["NextOrder"] = this._recordNowItem.QuestionItem.Content.Choices[data.param].NextOrder;
+            nextParam["NextOrder"] = this._recordNowItem.QuestionItem.Content.Choice[data.param].NextOrder;
             nextParam["CategoryContentID"] = this._categoryContentID;
             this.ReqChatData(nextParam);
         }
         else{
             //将数组解析为结果
-            let resStr:string = this._chooseRes.join();
+            let resStr:string = str;
             //向服务器发送结果
             let reqData:object = {};
             reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
@@ -274,23 +342,27 @@ export default class ChatWnd extends BaseWindow{
                 prefab.onClick(this.ClickReturnLastCall,this);
                 break;
             }
-            case this._MessageType.ScreenShotSprite:{
-                let prefab:fgui.GButton = obj as fgui.GButton;
-                prefab.onClick(this.ClickJoinShareWnd,this);
+            case this._MessageType.ScreenShotSprite: {
+                let prefab: ShotSpritePrefab = obj as ShotSpritePrefab;
+                prefab.SetHeadIcon(_message.AvaterURL);
+                let height = _message.QuestionItem.Content.Height;
+                let width = _message.QuestionItem.Content.Width;
+                prefab.SetShowIcon(_message.QuestionItem.Content.Tex,height,width);
+                break;
+            }
+            case this._MessageType.NeedInput: {
+                let prefab: LeftChatPrefab = obj as LeftChatPrefab;
+                prefab.SetHeadIcon(_message.AvaterURL);
+                prefab.SetTxt(_message.QuestionItem.Content.Text);
                 break;
             }
         }
         this._chatList.scrollToView(idx);
     }
 
-    //点击弹出分享界面
-    public ClickJoinShareWnd():void{
-
-    }
-
     //点击回退上一题
     public ClickReturnLastCall():void{
-        this._chooseRes.pop();
+        // this._chooseRes.pop();
         this._recordBtn.visible = false;
 
 
@@ -327,6 +399,14 @@ export default class ChatWnd extends BaseWindow{
             }
             case this._MessageType.QuestionReturnBtn:{
                 url = "ui://Chat/returnLast";
+            }
+            case this._MessageType.ScreenShotSprite: {
+                url = "ui://Chat/ShotSprite";
+                break;
+            }
+            case this._MessageType.NeedInput: {
+                url = "ui://Chat/LeftChat";
+                break;
             }
         }
         return url;

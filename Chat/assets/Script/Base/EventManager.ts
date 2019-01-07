@@ -12,7 +12,7 @@ export default class EventManager{
                 listener = msg.listener;
                 thisObj = msg.thisObj;
                 if(data){
-                    listener.apply(thisObj,data);
+                    listener.apply(thisObj,[data]);
                 }
                 else{
                     listener.apply(thisObj);

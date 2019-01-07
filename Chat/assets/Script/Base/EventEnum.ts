@@ -5,6 +5,8 @@ enum EventEnum{
     "ChooseSome",   //选择某个答案
     "ScreenShotOver",   //截图完毕
     "WaitModelOver",        //模式等待结束
+    "ClickHotSearch",       //点击搜索关键词
+    "ReqAgainTest",         //请求重玩本关
 }
 
 interface EventFunc{
@@ -25,8 +27,8 @@ interface EventDataTwo<T,K> extends EventData{
     param2:K;
 }
 
-interface EventDataThird<T> extends EventData{
+interface EventDataThird<T,K,J> extends EventData{
     param:T;
-    param2:T;
-    param3:T;
+    param2:K;
+    param3:J;
 }

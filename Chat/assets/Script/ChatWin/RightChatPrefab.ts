@@ -1,3 +1,4 @@
+
 export default class RightChatPrefab extends fgui.GComponent{
     private _headIcon:fgui.GLoader;
     private _txt:fgui.GTextField;

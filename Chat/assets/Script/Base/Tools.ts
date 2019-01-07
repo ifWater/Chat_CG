@@ -18,21 +18,22 @@ export default class Tools{
             let node = new cc.Node();
             node.parent = cc.director.getScene();
             let camera = node.addComponent(cc.Camera);
-            let viewWidth = cc.view.getVisibleSize().width*2;
-            let viewHeight = cc.view.getVisibleSize().height*2;
-            node.setPosition(viewWidth/2,viewHeight/2);
+            let viewWidth = cc.view.getVisibleSize().width;
+            let viewHeight = cc.view.getVisibleSize().height;
+            // node.setPosition(viewWidth/2,viewHeight/2);
             // console.log(viewHeight,viewWidth)
             // 设置你想要的截图内容的 cullingMask
             camera.cullingMask = cullingMask;
             // 新建一个 RenderTexture，并且设置 camera 的 targetTexture 为新建的 RenderTexture，这样 camera 的内容将会渲染到新建的 RenderTexture 中。
             let texture = new cc.RenderTexture();
             // let gl = cc.game._renderContext;
+            // console.log("------------------------->",gl)
             // 如果截图内容中不包含 Mask 组件，可以不用传递第三个参数
             texture.initWithSize(viewWidth, viewHeight);
             camera.targetTexture = texture;
             // 渲染一次摄像机，即更新一次内容到 RenderTexture 中
-            let rootNode:cc.Node = cc.find("Canvas");
-            camera.render(rootNode);
+            let rootNode:cc.Node = cc.find("GRoot");
+            camera.render(cc.director.getScene());
 
             // 这样我们就能从 RenderTexture 中获取到数据了
             let data = texture.readPixels();
@@ -64,8 +65,8 @@ export default class Tools{
             let node = new cc.Node();
             node.parent = cc.director.getScene();
             let camera = node.addComponent(cc.Camera);
-            let viewWidth = cc.view.getVisibleSize().width*2;
-            let viewHeight = cc.view.getVisibleSize().height*2;
+            let viewWidth = cc.view.getVisibleSize().width;
+            let viewHeight = cc.view.getVisibleSize().height;
             node.setPosition(viewWidth/2,viewHeight/2);
             // console.log(viewHeight,viewWidth)
             // 设置你想要的截图内容的 cullingMask
@@ -77,7 +78,7 @@ export default class Tools{
             texture.initWithSize(cullWidth, cullHeight);
             camera.targetTexture = texture;
             // 渲染一次摄像机，即更新一次内容到 RenderTexture 中
-            let rootNode:cc.Node = cc.find("Canvas");
+            let rootNode:cc.Node = cc.find("GRoot");
             camera.render(rootNode);
 
             // 这样我们就能从 RenderTexture 中获取到数据了
@@ -110,8 +111,8 @@ export default class Tools{
         let node = new cc.Node();
         node.parent = cc.director.getScene();
         let camera = node.addComponent(cc.Camera);
-        let viewWidth = cc.view.getVisibleSize().width*2;
-        let viewHeight = cc.view.getVisibleSize().height*2;
+        let viewWidth = cc.view.getVisibleSize().width;
+        let viewHeight = cc.view.getVisibleSize().height;
         node.setPosition(viewWidth/2,viewHeight/2);
         // console.log(viewHeight,viewWidth)
         // 设置你想要的截图内容的 cullingMask
@@ -123,7 +124,7 @@ export default class Tools{
         texture.initWithSize(cullWidth, cullHeight);
         camera.targetTexture = texture;
         // 渲染一次摄像机，即更新一次内容到 RenderTexture 中
-        let rootNode:cc.Node = cc.find("Canvas");
+        let rootNode:cc.Node = cc.find("GRoot");
         camera.render(rootNode);
         return texture;
     }

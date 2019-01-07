@@ -1,3 +1,4 @@
+import ConfigMgr from '../Base/ConfigMgr';
 export default class LeftChatPrefab extends fgui.GComponent{
     private _headIcon:fgui.GLoader;
     private _txt:fgui.GTextField;
@@ -6,7 +7,7 @@ export default class LeftChatPrefab extends fgui.GComponent{
         super();
     }
 
-    protected onConstruct():void{
+    protected onConstruct(): void{
         this._headIcon = this.getChild("n2").asCom.getChild("n0").asLoader;
         this._txt = this.getChild("n1").asTextField;
     }
@@ -16,7 +17,7 @@ export default class LeftChatPrefab extends fgui.GComponent{
             console.log("传入图片url错误",url);
             return;
         }
-        this._headIcon.url = url;
+        this._headIcon.url = ConfigMgr.ServerIP + url;
     }
 
     public SetTxt(str:string):void{
