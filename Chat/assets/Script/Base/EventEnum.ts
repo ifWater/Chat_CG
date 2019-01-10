@@ -7,6 +7,7 @@ enum EventEnum{
     "WaitModelOver",        //模式等待结束
     "ClickHotSearch",       //点击搜索关键词
     "ReqAgainTest",         //请求重玩本关
+    "ImageLoadOver",        //圖片加載完畢
 }
 
 interface EventFunc{

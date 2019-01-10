@@ -13,10 +13,11 @@ export default class MainUI extends cc.Component {
     onLoad () {
         fgui.addLoadHandler();
         fgui.GRoot.create();
+        fgui.UIConfig.defaultFont = 'Arial';
     }
     
     start () {
-        WindowManager.GetInstance().OpenWindow<StartWnd>("StartWnd","StartWnd",StartWnd);
+        WindowManager.GetInstance().OpenWindow<StartWnd>("StartWnd","WaitWnd",StartWnd);
     }
 
     update(dt) {

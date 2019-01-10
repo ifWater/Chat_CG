@@ -14,6 +14,8 @@ import ShotSpritePrefab from './ShotSpritePrefab';
 import Tools from '../Base/Tools';
 import ChooseWin from '../ChooseWin/ChooseWin';
 import ShareWnd from '../EndWnd/ShareWnd';
+import ConfigMgr from '../Base/ConfigMgr';
+import SDKManager from '../Base/SDKManager';
 
 interface MessageType{
     Word:string;
@@ -31,13 +33,13 @@ interface MessageType{
 }
 
 export default class ChatWnd extends BaseWindow{
-    private _addBtn:fgui.GButton;
     private _sendBtn:fgui.GButton;
     private _inputTxt:fgui.GTextInput;
     private _chatList:fgui.GList;
     private _view:fgui.GComponent;
     private _MessageType:MessageType = {} as MessageType;
     private _returnBtn:fgui.GLoader;
+    private _inputBox:fgui.GGroup;
 
     private _Message:Array<any> = [];
     //服务器定制内容类型ID
@@ -64,11 +66,8 @@ export default class ChatWnd extends BaseWindow{
     //记录第一次需要发送的请求
     private _recordFirstSendData:any = null;
 
-    private _serverData:any;
-    private _chooseRes:Array<string>;
 
     private _playerHeadIcon:string = null;
-    private _isReturn:boolean = false;
     
     OnLoadToExtension(){
         fgui.UIObjectFactory.setExtension("ui://Chat/RightChat",RightChatPrefab);
@@ -82,11 +81,11 @@ export default class ChatWnd extends BaseWindow{
     OnCreate(){
         this._view = this.GetView();
 
-        this._addBtn = this._view.getChild("n11").asButton;
         this._sendBtn = this._view.getChild("n3").asButton;
         this._inputTxt = this._view.getChild("n4").asTextInput;
         this._chatList = this._view.getChild("n5").asList;
         this._returnBtn = this._view.getChild("n7").asLoader;
+        this._inputBox = this._view.getChild("n13").asGroup;
         this._inputTxt.on(fgui.Event.TEXT_CHANGE,this.InputTxtChangeCall,this);
         this._sendBtn.onClick(this.SendTxtCall,this);
         this._returnBtn.onClick(this.ReturnChooseWnd,this);
@@ -108,9 +107,11 @@ export default class ChatWnd extends BaseWindow{
     }
 
     OnOpen(param:any){
+        this._recordIsNeedPlayerInout = false;
         this._categoryContentID = param.CategoryContentID;
         this._recordFirstSendData = param;
-        this._chooseRes = [];
+        //隐藏输入框
+        this._inputBox.visible = false;
         //向服务器请求聊天数据
         this.ReqChatData(param);
         EventManager.AddEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
@@ -119,6 +120,7 @@ export default class ChatWnd extends BaseWindow{
     }
 
     OnClose(){
+        this._recordIsNeedPlayerInout = false;
         this._chatList.numItems = 0;
         this._Message = [];
         EventManager.RemoveEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
@@ -140,8 +142,8 @@ export default class ChatWnd extends BaseWindow{
 
     //截图完毕,在聊天框展示小图片
     public ShowScreenShot(data:any){
-        // console.log("==>",data);
         this.SimulatSendSprite(data.param,data.param2,data.param3);
+        this.SimulateSendServerWord("Click above image for details");
     }
 
     //模拟服务器发送图片
@@ -166,7 +168,9 @@ export default class ChatWnd extends BaseWindow{
 
     //发送输入的文本
     public SendTxtCall():void{
-
+        if(this._recordWillSendTxt == "" || this._recordWillSendTxt == undefined){
+            return;
+        }
         //玩家发送
         let simulateData:object = {};
         simulateData["QuestionItem"] = {};
@@ -178,38 +182,41 @@ export default class ChatWnd extends BaseWindow{
         this._chatList.numItems += 1;
         if (this._recordIsNeedPlayerInout) {
             this._recordIsNeedPlayerInout = false;
+            ConfigMgr.GetInstance().SetRecordInput(this._inputTxt.text);
             let reqData: object = {};
-            reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
+            reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
             reqData["CategoryContentID"] = this._categoryContentID;
             reqData["InputStr"] = this._recordWillSendTxt;
             let url = "/quce_server/user/GetResult";
             MessageManager.GetInstance().SendMessage(reqData, url, this, this.ReqTheResSuccess, this.ReqTheResDef);
         }
+        this._inputTxt.text = "";
     }
 
+    
+
     //模拟服务器发送文字
-    public SimulateSendServerWord():void{
+    public SimulateSendServerWord(txt:string):void{
         let simulateData:object = {};
         simulateData["AvaterURL"] = this._recordServerIcon;
         simulateData["QuestionItem"] = {};        
         simulateData["QuestionItem"]["Type"] = this._MessageType.Word;
         simulateData["QuestionItem"]["Content"] = {};
-        simulateData["QuestionItem"]["Content"]["Text"] = this._recordWillSendTxt;
+        simulateData["QuestionItem"]["Content"]["Text"] = txt;
         this._Message.push(simulateData);
         this._recordLastNum = this._chatList.numItems;
         this._chatList.numItems += 1;
     }
 
-    //模拟服务器
+    //模拟服务器发送文字
 
     //向服务器请求数据
     public ReqChatData(param:any):void{
         let reqData:object = {};
-        reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
+        reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
         reqData["NextOrder"] = param.NextOrder;
         reqData["CategoryContentID"] = param.CategoryContentID;
         let url = "/quce_server/user/QuizChatStep";
-        console.log(reqData);
 
         MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqDataSuccess,this.ReqDataDef);
     }
@@ -234,6 +241,13 @@ export default class ChatWnd extends BaseWindow{
         }
         if (data.QuestionItem.Type == this._MessageType.NeedInput) {
             this._recordIsNeedPlayerInout = true;
+            //播放动画
+            this._view.getTransition("t0").play();
+            this._inputBox.visible = true;
+            //自动设置玩家名字
+            this._inputTxt.text = SDKManager.GetInstance().GetPlayerName();
+            this._recordWillSendTxt = this._inputTxt.text;
+            ConfigMgr.GetInstance().SetRecordInput(this._inputTxt.text);
         }
     }
 
@@ -268,7 +282,7 @@ export default class ChatWnd extends BaseWindow{
             let resStr:string = str;
             //向服务器发送结果
             let reqData:object = {};
-            reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
+            reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
             reqData["CategoryContentID"] = this._categoryContentID;
             reqData["InputStr"] = resStr;
             let url = "/quce_server/user/GetResult";
@@ -279,6 +293,8 @@ export default class ChatWnd extends BaseWindow{
 
     //获取答题结果成功
     public ReqTheResSuccess(param:any):void{
+        //模拟服务器发送文字
+        this.SimulateSendServerWord("Analyzing your result...");
         let data: any = param.data;
         WindowManager.GetInstance().OpenWindow<EndWnd>("EndWnd", "EndWnd", EndWnd, data, 0);
 
@@ -291,7 +307,7 @@ export default class ChatWnd extends BaseWindow{
     //获取玩家icon
     public GetPlayHeadIcon():string{
         if(this._playerHeadIcon == null){
-            this._playerHeadIcon = FaceBookSDK.GetInstance().GetPlayerIcon();
+            this._playerHeadIcon = SDKManager.GetInstance().GetPlayerIcon();
         }
         return this._playerHeadIcon;
     }
@@ -306,7 +322,7 @@ export default class ChatWnd extends BaseWindow{
         switch(_message.QuestionItem.Type){
             case this._MessageType.PlayerWord:{
                 let prefab:RightChatPrefab = obj as RightChatPrefab;
-                let playerIcon:string = FaceBookSDK.GetInstance().GetPlayerIcon();
+                let playerIcon:string = SDKManager.GetInstance().GetPlayerIcon();
                 prefab.SetHeadIcon(playerIcon);
                 prefab.SetTxt(_message.QuestionItem.Content.Text);
                 break;
@@ -407,6 +423,9 @@ export default class ChatWnd extends BaseWindow{
             case this._MessageType.NeedInput: {
                 url = "ui://Chat/LeftChat";
                 break;
+            }
+            default:{
+                console.log("类型无法匹配！",messageType.QuestionItem.Type);
             }
         }
         return url;

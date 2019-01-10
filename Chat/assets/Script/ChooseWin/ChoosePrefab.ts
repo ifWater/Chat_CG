@@ -13,6 +13,14 @@ export default class ChoosePrefab extends fgui.GButton{
 
     public SetChooseState(state:boolean):void{
         this._chooseSpr.visible = state;
+        if(state){
+            this._nameTxt.fontSize = 34;
+            this._nameTxt.alpha = 255;
+        }
+        else{
+            this._nameTxt.fontSize = 28;
+            this._nameTxt.alpha = 163;
+        }
     }
 
     public SetTitleName(name:string):void{

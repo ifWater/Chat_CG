@@ -10,7 +10,9 @@ export default class MessageManager{
     }
 
     public SendMessage(reqData:any,url:string,callObj:object,callback:Function,defCall?:Function){
-        console.log("开始请求数据！",reqData,url);
+        if(CC_DEBUG){
+            console.log("开始请求数据！",reqData,url);
+        }
         let param:string = JSON.stringify(reqData);
 
         let xhr:XMLHttpRequest = new XMLHttpRequest();

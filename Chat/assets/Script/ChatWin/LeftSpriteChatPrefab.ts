@@ -1,4 +1,5 @@
 import ConfigMgr from '../Base/ConfigMgr';
+import Tools from '../Base/Tools';
 
 export default class LeftSpriteChatPrefab extends fgui.GComponent{
     private _headIcon:fgui.GLoader;
@@ -18,11 +19,13 @@ export default class LeftSpriteChatPrefab extends fgui.GComponent{
             console.log("传入图片url错误",url);
             return;
         }
-        this._headIcon.url = ConfigMgr.ServerIP + url;
+        Tools.ChangeURL(ConfigMgr.ServerIP + url,this._headIcon);
+        // this._headIcon.url = ConfigMgr.ServerIP + url;
     }
 
     public SetShowIcon(url:string,_height:number,_width:number):void{
-        this._showIcon.url = url;
+        Tools.ChangeURL(ConfigMgr.ServerIP + url,this._showIcon);
+        // this._showIcon.url = url;
         this._showIcon.height = _height;
         this._showIcon.width = _width;
     }

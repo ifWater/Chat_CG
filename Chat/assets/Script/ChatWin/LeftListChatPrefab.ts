@@ -1,6 +1,7 @@
 import EventManager from '../Base/EventManager';
 import{EventEnum,EventFunc,EventDataTwo} from '../Base/EventEnum';
 import ConfigMgr from '../Base/ConfigMgr';
+import Tools from '../Base/Tools';
 
 export default class LeftListChatPrefab extends fgui.GComponent{
     private _headIcon:fgui.GLoader;
@@ -26,7 +27,8 @@ export default class LeftListChatPrefab extends fgui.GComponent{
             console.log("传入图片url错误",url);
             return;
         }
-        this._headIcon.url = ConfigMgr.ServerIP + url;
+        Tools.ChangeURL(ConfigMgr.ServerIP + url,this._headIcon);
+        // this._headIcon.url = ConfigMgr.ServerIP + url;
     }
 
     public SetQuestion(str:string):void{
@@ -47,14 +49,13 @@ export default class LeftListChatPrefab extends fgui.GComponent{
     }
 
     public RenderListCall(idx:number,obj:fgui.GButton):void{
+        obj.getController("btn").selectedIndex = 0;
         obj.getChild("n6").text = this._dataList[idx].DescriptionText;
         // this._questionList.height = (obj.height + this._questionList.lineGap)*(idx+1);
     }
 
     public ClickCall(obj:fgui.GButton):void{
         if(this._isCanClick){
-            console.log(this._questionList)
-            
             this._isCanClick = false;
             //触发事件                                                                                                                                                                                                                                                                                                                                                                                    
             let idx:number = this._questionList.getChildIndex(obj);

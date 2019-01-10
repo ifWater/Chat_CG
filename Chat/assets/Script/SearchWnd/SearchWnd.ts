@@ -6,6 +6,7 @@ import MessageManager from "../Base/MessageManager";
 import EventManager from '../Base/EventManager';
 import{EventEnum,EventDataOne} from '../Base/EventEnum';
 import SearchEndWnd from './SearchEndWnd';
+import SDKManager from '../Base/SDKManager';
 
 export default class SearchWnd extends BaseWindow{
     private _view:fgui.GComponent;
@@ -39,7 +40,7 @@ export default class SearchWnd extends BaseWindow{
     OnOpen(){
         //向服务器请求火爆的搜索数据
         let reqData:object  = {};
-        reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
+        reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
         let url = "/quce_server/user/GetHotSearchRecommend";
         MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqHotSuccesss,this.ReqHotDef);
         EventManager.AddEventListener(EventEnum.ClickHotSearch,this.ClickHotCall,this);
@@ -53,6 +54,8 @@ export default class SearchWnd extends BaseWindow{
     public ClickHotCall(data:any){
         let _data:EventDataOne<string> = data as EventDataOne<string>;
         this._inputTxt.text = _data.param;
+        this._recordTxt = _data.param;
+        this.CliclSearchBtnCall();
     }
 
     //请求热搜关键词成功

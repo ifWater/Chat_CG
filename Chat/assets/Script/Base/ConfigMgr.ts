@@ -19,7 +19,7 @@ export default class ConfigMgr{
     private readonly configMap:string[] = ["fraction","price"];              //配置表名
     private readonly ID:string = "ID";
     //-----------------------网络地址-------------------------------------
-    public static readonly ServerIP:string = "http://10.0.0.8:12345";
+    public static readonly ServerIP:string = "https://cutepard.com";
     //---------------------------------------------------------
     private _loadFileTag:boolean[] = [];
     private static _instance:ConfigMgr;
@@ -85,5 +85,14 @@ export default class ConfigMgr{
             return "error";
         }
         return this.configData[configName][id][key];
+    }
+
+    //------------------------------------自定义、
+    private _recordInput:string = "IfWater";
+    public SetRecordInput(txt:string):void{
+        this._recordInput = txt;
+    }
+    public GetRecordInput():string{
+        return this._recordInput;
     }
 }

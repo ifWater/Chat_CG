@@ -5,6 +5,8 @@ import ChoosePrefab from './ChoosePrefab';
 import ScrollPaneUp from './ScrollPaneUp';
 import WindowManager from '../Base/WindowManager';
 import SearchWnd from '../SearchWnd/SearchWnd';
+import FaceBookSDK from '../Base/FaceBookSDK';
+import SDKManager from '../Base/SDKManager';
 
 export default class ChooseWin extends BaseWindow{
     private _view:fgui.GComponent;
@@ -13,6 +15,7 @@ export default class ChooseWin extends BaseWindow{
     private _pageControll:fgui.Controller;
     private _data:any;
     private _searchBtn:fgui.GLoader;
+    private _headIcon:fgui.GLoader;
 
     OnLoadToExtension(){
         fgui.UIObjectFactory.setExtension("ui://Package1/list",ViewList);
@@ -33,6 +36,7 @@ export default class ChooseWin extends BaseWindow{
         this._listTitle.itemRenderer = this.RenderListTitle.bind(this);
 
         this._searchBtn = this._view.getChild("n13").asLoader;
+        this._headIcon = this._view.getChild("n16").asCom.getChild("n0").asLoader;
 
         
         this._searchBtn.onClick(this.ClickSearchCall,this);
@@ -42,8 +46,10 @@ export default class ChooseWin extends BaseWindow{
 
     OnOpen(param:any){
         if(param){
+            this.InitHeadIcon();
             this.InitList(param);
         }
+        console.log(this._list.height)
     }
     
     OnClose(){
@@ -67,10 +73,16 @@ export default class ChooseWin extends BaseWindow{
         this._pageControll.selectedIndex = 0;
     }
 
+    //初始化头像
+    public InitHeadIcon():void{
+        this._headIcon.url = SDKManager.GetInstance().GetPlayerIcon();
+    }
+
     //页面列表的渲染回调
     public RenderListPackge(idx:number,obj:fgui.GObject):void{
         let item:ViewList = <ViewList>obj;
         item.SetUUID(this._data[idx].ID);
+        item.SetHeight(this._list.height-20);
     }
     //标题列表的渲染回调
     public RenderListTitle(idx:number,obj:fgui.GObject):void{

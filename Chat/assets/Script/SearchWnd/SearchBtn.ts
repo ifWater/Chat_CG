@@ -23,11 +23,19 @@ export default class SearchBtn extends fgui.GComponent{
     public SetWordAndSprite(word:string):void{
         this._txt.text = word;
         this._word = word;
+        
+        this._bgSprite.url = this.GetSpriteUrl();
     }
 
     public DispatchClick(){
         let data:EventDataOne<string> = {} as EventDataOne<string>;
         data.param = this._word;
         EventManager.DispatchEvent(EventEnum.ClickHotSearch,data);
+    }
+
+    private GetSpriteUrl():string{
+        let randNum:number = Math.floor(Math.random()*5) + 1;
+        let url:string = "ui://SearchWnd/6"// + randNum;
+        return url;
     }
 }

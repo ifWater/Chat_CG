@@ -1,3 +1,6 @@
+import { EventEnum } from "./EventEnum";
+import EventManager from "./EventManager";
+
 //工具类
 // const {ccclass, property} = cc._decorator;
 export default class Tools{
@@ -173,7 +176,7 @@ export default class Tools{
         obj.runAction(Act);
     }
     //根据url创建图片(canvas原生创建)并加载到对应的组件上面
-    public CreateImage(spriteCom:cc.Sprite,url:string):void{
+    public static CreateImage(spriteCom:cc.Sprite,url:string):void{
         let image = new Image();
         image.crossOrigin = 'anonymous';
         image.src = url;
@@ -183,6 +186,39 @@ export default class Tools{
             texture.handleLoadedTexture();
             spriteCom.spriteFrame = new cc.SpriteFrame(texture);
             spriteCom.enabled = true;
+        }
+    }
+
+    //解决facebook上无法取服务器图片问题
+    public static async ChangeURL(url:string,loader:fgui.GLoader,EventID?:number,_width?:number,_height?:number){
+        let blobUrl = await fetch(url)
+        .then(function (response) {
+            return response.blob();
+        })
+        .then(function (myBlob) {
+            return URL.createObjectURL(myBlob);
+        });
+
+        let image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.src = blobUrl;
+        image.onload = function(){
+            let texture = new cc.Texture2D();
+            texture.initWithElement(image);
+            texture.handleLoadedTexture();
+            if(_width&&_height){
+                texture.width = _width;
+                texture.height = _height;
+            }
+            
+            let _sprite = new cc.SpriteFrame(texture);
+            loader.texture = _sprite;
+            if(_width&&_height){
+                loader.texture.setOriginalSize(cc.size(_width,_height));
+            }
+            if(EventID){
+                EventManager.DispatchEvent(EventID);
+            }
         }
     }
 }

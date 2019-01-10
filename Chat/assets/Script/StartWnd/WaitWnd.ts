@@ -11,10 +11,11 @@ export default class WaitWnd extends BaseWindow{
     }
 
     OnCreate(){
-
+        this.GetView().makeFullScreen();
     }
 
     OnOpen(){
+        console.log("==========>",cc.view.getViewportRect());
         EventManager.AddEventListener(EventEnum.WaitModelOver,this.CloseSelf,this);
     }
 
@@ -23,7 +24,7 @@ export default class WaitWnd extends BaseWindow{
     }
 
     public CloseSelf():void{
-        WindowManager.GetInstance().CloseWindow("WaitWnd",this);
+        WindowManager.GetInstance().CloseWindow<WaitWnd>("WaitWnd",this,WaitWnd);
     }
 
 }

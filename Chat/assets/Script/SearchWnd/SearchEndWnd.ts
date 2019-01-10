@@ -8,11 +8,15 @@ import ChatWnd from '../ChatWin/ChatWnd';
 import WindowManager from '../Base/WindowManager';
 import SearchWnd from './SearchWnd';
 import ChooseWin from '../ChooseWin/ChooseWin';
+import SDKManager from '../Base/SDKManager';
 
 export default class SearchEndWnd extends BaseWindow{
     private _list:fgui.GList;
     private _searchBtn:fgui.GLoader;
     private _returnBtn:fgui.GLoader;
+
+    private _NoResTip:fgui.GTextField; 
+
     private _data:any = [];
     private _isCanClick:boolean = true;
     private _ID:string;
@@ -22,12 +26,16 @@ export default class SearchEndWnd extends BaseWindow{
     private _recordLastNum:number = 0;
     private _recordWord:string;
 
+    //记录是否是第一次请求
+    private _recordFirstRes:boolean = true;
+
     OnLoadToExtension(){
         fgui.UIObjectFactory.setExtension("ui://Package1/viewBtn",ViewBtn);
     }
 
     OnCreate(){
         this._list = this.GetView().getChild("n22").asList;
+        this._NoResTip = this.GetView().getChild("n29").asTextField;
         this._list.on(fgui.Event.CLICK_ITEM,this.OnItemClickCall,this);
         this._list.on(fgui.Event.PULL_UP_RELEASE,this.OnPullUpToRefresh,this);
         this._list.itemRenderer = this.RenderListView.bind(this);
@@ -35,15 +43,24 @@ export default class SearchEndWnd extends BaseWindow{
         this._returnBtn = this.GetView().getChild("n26").asLoader;
         this._returnBtn.onClick(this.ClickReturnBtn,this);
         this._searchBtn.onClick(this.ClickInputBtn,this);
+        this._NoResTip.visible = false;
     }
 
     OnOpen(data:string){
+        this._data = [];
+        this._isCanClick = true;
+        this._nowClickItem = null;
+        this._InPullRefresh = false;
+        this._recordLastNum = 0;
+        this._recordFirstRes = true;
+        this._NoResTip.visible = false;
        this._recordWord = data;
        this.ReqDataInId();
     }
 
     OnClose(){
-        this._list.removeChildren();
+        this._list.numItems = 0;
+        DelayTimeManager.RemoveDelay(this.ResetRefreshCom, this);
     }
 
     public ClickInputBtn():void{
@@ -62,11 +79,10 @@ export default class SearchEndWnd extends BaseWindow{
             this._list.scrollPane.lockFooter(footer.sourceHeight);
         }
         let reqData:object = {};
-        reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
+        reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
         reqData["Keyword"] = this._recordWord;
         reqData["Offset"] = this._list.numItems;
         let url:string = "/quce_server/user/Search";
-        console.log(reqData)
         MessageMangager.GetInstance().SendMessage(reqData,url,this,this.ReqListDataSuccess,this.ReqListDataDef);
     }
 
@@ -80,7 +96,6 @@ export default class SearchEndWnd extends BaseWindow{
     //请求列表数据成功
     public ReqListDataSuccess(param:any):void{
         let data = param.data.CategoryContentInfo;
-        console.log("请求列表数据",data);
         if(data != null){
             if(this._InPullRefresh){
                 this._InPullRefresh = false;
@@ -102,10 +117,13 @@ export default class SearchEndWnd extends BaseWindow{
                 DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
             }
             else{
-                console.log("没有信息哟")
+                console.log("没有信息哟",this._recordFirstRes)
+                if(this._recordFirstRes){
+                    this._NoResTip.visible = true;
+                }
             }
         }
-        
+        this._recordFirstRes = false;
     }
 
     //请求列表数据失败
@@ -117,6 +135,7 @@ export default class SearchEndWnd extends BaseWindow{
             this._list.scrollPane.lockFooter(footer.sourceHeight);
             DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
         }
+        this._recordFirstRes = false;
     }
 
     public RenderListView(idx:number,obj:fgui.GObject):void{
@@ -139,7 +158,7 @@ export default class SearchEndWnd extends BaseWindow{
             //向服务器请求增加点击条目
             let reqData:object = {};
             reqData["ID"] = itemObj.GetUUID();
-            reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
+            reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
             let url = "/quce_server/user/ClickCategoryContent";
             MessageMangager.GetInstance().SendMessage(reqData,url,this,this.ReqClickAddNumSuccess,this.ReqClickAddNumDef);
         }

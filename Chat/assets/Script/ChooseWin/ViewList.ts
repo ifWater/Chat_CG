@@ -5,6 +5,7 @@ import ScrollPaneUp from './ScrollPaneUp';
 import FaceBookSDK from '../Base/FaceBookSDK';
 import MessageMangager from '../Base/MessageManager';
 import DelayTimeManager from '../Base/DelayTimeManager';
+import SDKManager from '../Base/SDKManager';
 export default class ViewList extends fgui.GList{
     private _list:fgui.GList;
     private _data:any = [];
@@ -30,6 +31,10 @@ export default class ViewList extends fgui.GList{
     public SetUUID(ID:string):void{
         this._ID = ID;
     }
+
+    public SetHeight(_height:number):void{
+        this.height = _height;
+    }
     
     //根据ID向服务器请求相应的数据
     public ReqDataInId():void{
@@ -39,7 +44,7 @@ export default class ViewList extends fgui.GList{
             this._list.scrollPane.lockFooter(footer.sourceHeight);
         }
         let reqData:object = {};
-        reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
+        reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
         reqData["CategoryID"] = this._ID;
         reqData["Offset"] = this._list.numItems;
         let url = "/quce_server/user/GetCategoryContent";
@@ -57,7 +62,7 @@ export default class ViewList extends fgui.GList{
     public ReqListDataSuccess(param:any):void{
         this._IsInitList = true;
         let data = param.data.CategoryContentInfo;
-        console.log("请求列表数据",data);
+        // console.log("请求列表数据",data);
         if(data != null){
             if(this._InPullRefresh){
                 this._InPullRefresh = false;
@@ -118,7 +123,6 @@ export default class ViewList extends fgui.GList{
     }
 
     public OnItemClickCall(item:fgui.GObject):void{
-        console.log("HELLO",this._list.getChildIndex(item));
         let itemObj:ViewBtn = <ViewBtn>item;
         if(this._isCanClick){
             this._isCanClick = false;
@@ -126,7 +130,7 @@ export default class ViewList extends fgui.GList{
             //向服务器请求增加点击条目
             let reqData:object = {};
             reqData["ID"] = itemObj.GetUUID();
-            reqData["UserID"] = FaceBookSDK.GetInstance().GetPlayerID();
+            reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
             let url = "/quce_server/user/ClickCategoryContent";
             MessageMangager.GetInstance().SendMessage(reqData,url,this,this.ReqClickAddNumSuccess,this.ReqClickAddNumDef);
         }

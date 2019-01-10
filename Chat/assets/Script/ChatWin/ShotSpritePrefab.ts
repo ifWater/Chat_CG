@@ -1,6 +1,7 @@
 import ConfigMgr from '../Base/ConfigMgr';
 import WindowManager from '../Base/WindowManager';
 import ShareWnd from '../EndWnd/ShareWnd';
+import Tools from '../Base/Tools';
 
 export default class ShotSpritePrefab extends fgui.GComponent {
     private _headIcon: fgui.GLoader;
@@ -25,17 +26,18 @@ export default class ShotSpritePrefab extends fgui.GComponent {
             console.log("图片错误", url);
             return;
         }
-        this._headIcon.url = ConfigMgr.ServerIP + url;
+        Tools.ChangeURL(ConfigMgr.ServerIP + url,this._headIcon);        
+        // this._headIcon.url = ConfigMgr.ServerIP + url;
     }
 
     public SetShowIcon(_tex: cc.RenderTexture, _height: number, _width: number): void {
         this._recordNowResData["Tex"] = _tex;
         this._recordNowResData["Height"] = _height;
-        this._recordNowResData["Width1"] = _width;
+        this._recordNowResData["Width"] = _width;
         
         this._showIcon.texture = new cc.SpriteFrame(_tex);
-        this._showIcon.height = _height;
-        this._showIcon.width = _width;
+        this._showIcon.height = 460;
+        this._showIcon.width = 345;
         this._showIcon.setPivot(0.5,0.5);
         this._showIcon.setScale(-1,1);
         this._showIcon.rotation = 180;

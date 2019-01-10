@@ -10,10 +10,11 @@ export enum WindowType{
     Popup = 2,//弹窗
 }
 export enum WindowLayer{
-    LockWnd = 0,
-    PopupWnd = 1,
-    TipWnd = 2,
-    GuidWnd = 3,
+    LockWnd = 0,    //固定窗口
+    PopupWnd = 1,   //弹窗
+    TipWnd = 2,     //提示窗口
+    GuidWnd = 3,    //引导窗口
+    ShotScreen = 4, //截屏窗口
 }
 export default class WindowManager{
     private static _instance:WindowManager;
@@ -32,7 +33,7 @@ export default class WindowManager{
 
     private _WndCom:Array<fgui.GComponent> = [];
     private InitWndMgr():void{
-        for(let i = 0;i < 4;i++){
+        for(let i = 0;i < 5;i++){
             let newCom:fgui.GComponent = new fgui.GComponent();
             newCom.setSize(cc.winSize.width,cc.winSize.height);
             // newCom.opaque = true;
@@ -42,11 +43,11 @@ export default class WindowManager{
     }
 
     public OpenWindow<T>(packageName:string,windowName:string,T,
-                    param:any = null,WndType:number = 0,WndLayer:number = 0):void{
-        this.LoadPackage<T>(packageName,windowName,T,param,WndType,WndLayer);
+                    param:any = null,WndType:number = 0):void{
+        this.LoadPackage<T>(packageName,windowName,T,param,WndType);
     }
 
-    private _OpenWindow<T>(packageName:string,windowName:string,T,param:any = null,WndType:number = 0,WndLayer:number = 0):void{
+    private _OpenWindow<T>(packageName:string,windowName:string,T,param:any = null,WndType:number = 0):void{
         let nowWin:WindowRecord = <WindowRecord>{};
         nowWin.windowName = windowName;
         let isCreate: BaseWindow = this.IsHaveThisWinndow<T>(windowName, T);
@@ -54,6 +55,7 @@ export default class WindowManager{
             nowWin.windowScript = new T() as BaseWindow;            
             isCreate = nowWin.windowScript;
             nowWin.windowScript.OnLoadToExtension();
+            let WndLayer = nowWin.windowScript.GetWndLayer();
             let _view:fgui.GComponent = fgui.UIPackage.createObject(packageName,windowName).asCom;
             nowWin.view = _view;
             if(WndType == 0){
@@ -64,6 +66,10 @@ export default class WindowManager{
                 this._WndCom[WndLayer].addChild(_view);                
             }
             nowWin.windowScript.SetView(_view);
+
+            if(WndLayer != WindowLayer.ShotScreen){
+                nowWin.windowScript.SetFullScreen();
+            }
             nowWin.windowScript.OnCreate();
             this._WindowList.push(nowWin);
         }
@@ -133,15 +139,15 @@ export default class WindowManager{
         return isHave;
     }
 
-    private LoadPackage<T>(name:string,windowName:string,T,param:any = null,WndType:number = 0,WndLayer:number = 0):void{
+    private LoadPackage<T>(name:string,windowName:string,T,param:any = null,WndType:number = 0):void{
         let isLoad:number = this._loadAllPackage.indexOf(name);
         if(isLoad == -1){
             fgui.UIPackage.loadPackage("FairyGui/"+name,()=>{
-                this.LoadOverCall<T>(name,windowName,T,param,WndType,WndLayer);
+                this.LoadOverCall<T>(name,windowName,T,param,WndType);
             });
         }
         else{           
-            this._OpenWindow<T>(name,windowName,T,param,WndType,WndLayer);
+            this._OpenWindow<T>(name,windowName,T,param,WndType);
         }
     }
 
@@ -149,8 +155,8 @@ export default class WindowManager{
         
     }
 
-    private LoadOverCall<T>(name:string,windowName:string,T,param:any = null,WndType:number = 0,WndLayer:number = 0):void{
+    private LoadOverCall<T>(name:string,windowName:string,T,param:any = null,WndType:number = 0):void{
         this._loadAllPackage.push(name);
-        this._OpenWindow<T>(name,windowName,T,param,WndType,WndLayer);
+        this._OpenWindow<T>(name,windowName,T,param,WndType);
     }
 }

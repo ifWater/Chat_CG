@@ -1,4 +1,5 @@
 import ConfigMgr from '../Base/ConfigMgr';
+import Tools from '../Base/Tools';
 export default class LeftChatPrefab extends fgui.GComponent{
     private _headIcon:fgui.GLoader;
     private _txt:fgui.GTextField;
@@ -17,7 +18,8 @@ export default class LeftChatPrefab extends fgui.GComponent{
             console.log("传入图片url错误",url);
             return;
         }
-        this._headIcon.url = ConfigMgr.ServerIP + url;
+        Tools.ChangeURL(ConfigMgr.ServerIP + url,this._headIcon);
+        // this._headIcon.url = ConfigMgr.ServerIP + url;
     }
 
     public SetTxt(str:string):void{
