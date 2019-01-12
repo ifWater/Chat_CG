@@ -82,4 +82,22 @@ export default class SDKManager{
             }
         }
     }
+
+    //给好友发送消息
+    public SendMessageToFrends(baseImg:string):void{
+        switch(this._recordPlatform){
+            case Platform.WB:{
+                console.log("不能发送消息哟!");
+                break;
+            }
+            case Platform.FaceBook:{
+                FaceBookSDK.GetInstance().SendMessageToFriends(baseImg);
+                break;
+            }
+            case Platform.WeiXin:{
+                console.log("不能发送消息哟!");
+                break;
+            }
+        }
+    }
 }

@@ -4,7 +4,6 @@ import LeftChatPrefab from './LeftChatPrefab';
 import LeftSpriteChatPrefab from './LeftSpriteChatPrefab';
 import LeftListChatPrefab from './LeftListChatPrefab';
 import QuestionState from './QuestionState';
-import FaceBookSDK from '../Base/FaceBookSDK';
 import EventManager from '../Base/EventManager';
 import{EventEnum,EventDataThird,EventDataTwo} from '../Base/EventEnum';
 import MessageManager from '../Base/MessageManager';
@@ -16,6 +15,8 @@ import ChooseWin from '../ChooseWin/ChooseWin';
 import ShareWnd from '../EndWnd/ShareWnd';
 import ConfigMgr from '../Base/ConfigMgr';
 import SDKManager from '../Base/SDKManager';
+import FullScreenWordPrefab from './FullScreenWordPrefab';
+import FullScreenChoosePrefab from './FullScreenChoosePrefab';
 
 interface MessageType{
     Word:string;
@@ -32,14 +33,31 @@ interface MessageType{
     NeedInput: string;
 }
 
+enum ChatType{
+    FullScreenType = 1,
+    TalkType = 2,
+}
+
 export default class ChatWnd extends BaseWindow{
-    private _sendBtn:fgui.GButton;
     private _inputTxt:fgui.GTextInput;
     private _chatList:fgui.GList;
     private _view:fgui.GComponent;
     private _MessageType:MessageType = {} as MessageType;
     private _returnBtn:fgui.GLoader;
     private _inputBox:fgui.GGroup;
+
+    //聊天输入框
+    private _talkInputTxt:fgui.GTextInput;
+    private _talkSendBtn:fgui.GButton;
+    private _talkGroup:fgui.GGroup;
+    private _talkList:fgui.GList;
+    //全屏输入框
+    private _FullInputTxt:fgui.GTextInput;
+    private _FullSendBtn:fgui.GLoader;
+    private _FullGroup:fgui.GGroup;
+    private _FullList:fgui.GList;
+    //全屏图片
+    private _FullimageBg:fgui.GLoader;
 
     private _Message:Array<any> = [];
     //服务器定制内容类型ID
@@ -66,6 +84,9 @@ export default class ChatWnd extends BaseWindow{
     //记录第一次需要发送的请求
     private _recordFirstSendData:any = null;
 
+    //记录当前的聊天模式
+    private _recordChatType:number = 0;
+
 
     private _playerHeadIcon:string = null;
     
@@ -76,22 +97,36 @@ export default class ChatWnd extends BaseWindow{
         fgui.UIObjectFactory.setExtension("ui://Chat/LeftListChat",LeftListChatPrefab)
         fgui.UIObjectFactory.setExtension("ui://Chat/QuestionState",QuestionState);
         fgui.UIObjectFactory.setExtension("ui://Chat/ShotSprite", ShotSpritePrefab);
+        fgui.UIObjectFactory.setExtension("ui://Chat/FullScreenWord",FullScreenWordPrefab);
+        fgui.UIObjectFactory.setExtension("ui://Chat/FullScreenChoosePrefab",FullScreenChoosePrefab);
     }
 
     OnCreate(){
         this._view = this.GetView();
 
-        this._sendBtn = this._view.getChild("n3").asButton;
-        this._inputTxt = this._view.getChild("n4").asTextInput;
-        this._chatList = this._view.getChild("n5").asList;
+        this._talkSendBtn = this._view.getChild("n3").asButton;
+        this._talkInputTxt = this._view.getChild("n4").asTextInput;
+        this._talkList = this._view.getChild("n5").asList;
         this._returnBtn = this._view.getChild("n7").asLoader;
-        this._inputBox = this._view.getChild("n13").asGroup;
-        this._inputTxt.on(fgui.Event.TEXT_CHANGE,this.InputTxtChangeCall,this);
-        this._sendBtn.onClick(this.SendTxtCall,this);
+        this._talkGroup = this._view.getChild("n13").asGroup;
+        this._FullimageBg = this._view.getChild("n14").asLoader;
+        this._FullInputTxt = this._view.getChild("n15").asTextInput;
+        this._FullSendBtn = this._view.getChild("n16").asLoader;
+        this._FullGroup = this._view.getChild("n17").asGroup;
+        this._FullList = this._view.getChild("n18").asList;
+
+        this._talkInputTxt.on(fgui.Event.TEXT_CHANGE,this.InputTxtChangeCall,this);
+        this._talkSendBtn.onClick(this.SendTxtCall,this);
+        this._FullInputTxt.on(fgui.Event.TEXT_CHANGE,this.InputTxtChangeCall,this);
+        this._FullSendBtn.onClick(this.SendTxtCall,this);
+
         this._returnBtn.onClick(this.ReturnChooseWnd,this);
+
+        this._FullList.itemProvider = this.ReturnChatPrefab.bind(this);
+        this._FullList.itemRenderer = this.RenderChatListCall.bind(this);
         
-        this._chatList.itemProvider = this.ReturnChatPrefab.bind(this);
-        this._chatList.itemRenderer = this.RenderChatListCall.bind(this);
+        this._talkList.itemProvider = this.ReturnChatPrefab.bind(this);
+        this._talkList.itemRenderer = this.RenderChatListCall.bind(this);
         this._MessageType.Word = "question_text_desc";
         this._MessageType.AudioChoose = "question_audio_choice";
         this._MessageType.Sprite = "question_image_desc";
@@ -107,11 +142,15 @@ export default class ChatWnd extends BaseWindow{
     }
 
     OnOpen(param:any){
+        //进行模式切换
+        this.SwitchUI(param.ShowMethod,param.BgImageURL);
+        
         this._recordIsNeedPlayerInout = false;
         this._categoryContentID = param.CategoryContentID;
         this._recordFirstSendData = param;
         //隐藏输入框
-        this._inputBox.visible = false;
+        this._FullGroup.visible = false;
+        this._talkGroup.visible = false;
         //向服务器请求聊天数据
         this.ReqChatData(param);
         EventManager.AddEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
@@ -123,9 +162,35 @@ export default class ChatWnd extends BaseWindow{
         this._recordIsNeedPlayerInout = false;
         this._chatList.numItems = 0;
         this._Message = [];
+        this._FullimageBg.texture = null;
         EventManager.RemoveEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
         EventManager.RemoveEventListener(EventEnum.ScreenShotOver,this.ShowScreenShot,this);
         EventManager.RemoveEventListener(EventEnum.ReqAgainTest,this.AgainTest,this);
+    }
+
+    //根据服务器下发的聊天模式进行切换界面
+    public SwitchUI(_type:number,url:string){
+        this._recordChatType = _type;
+        this._FullList.visible = false;
+        this._talkList.visible = false;
+        switch(_type){
+            case ChatType.FullScreenType:{
+                this._chatList = this._FullList;
+                this._inputTxt = this._FullInputTxt;
+                this._inputBox = this._FullGroup;
+                Tools.ChangeURL(ConfigMgr.ServerIP + url,this._FullimageBg);
+                this._FullimageBg.visible = true;
+                break;
+            }
+            case ChatType.TalkType:{
+                this._chatList = this._talkList;
+                this._inputTxt = this._talkInputTxt;
+                this._inputBox = this._talkGroup;
+                this._FullimageBg.visible = false;
+                break;
+            }
+        }
+        this._chatList.visible = true;
     }
 
     //再测一次
@@ -141,9 +206,19 @@ export default class ChatWnd extends BaseWindow{
     }
 
     //截图完毕,在聊天框展示小图片
+    //全屏模式直接出结果图
     public ShowScreenShot(data:any){
-        this.SimulatSendSprite(data.param,data.param2,data.param3);
-        this.SimulateSendServerWord("Click above image for details");
+        if(this._recordChatType == ChatType.TalkType){
+            this.SimulatSendSprite(data.param,data.param2,data.param3);
+            this.SimulateSendServerWord("Click above image for details");
+        }
+        else if(this._recordChatType == ChatType.FullScreenType){
+            let _recordNowResData:object = {};
+            _recordNowResData["Tex"] = data.param;
+            _recordNowResData["Height"] = data.param3;
+            _recordNowResData["Width"] = data.param2;
+            WindowManager.GetInstance().OpenWindow<ShareWnd>("EndWnd","ShareWnd",ShareWnd,_recordNowResData);
+        }
     }
 
     //模拟服务器发送图片
@@ -171,15 +246,17 @@ export default class ChatWnd extends BaseWindow{
         if(this._recordWillSendTxt == "" || this._recordWillSendTxt == undefined){
             return;
         }
-        //玩家发送
-        let simulateData:object = {};
-        simulateData["QuestionItem"] = {};
-        simulateData["QuestionItem"]["Type"] = this._MessageType.PlayerWord;
-        simulateData["QuestionItem"]["Content"] = {};
-        simulateData["QuestionItem"]["Content"]["Text"] = this._recordWillSendTxt;
-        this._Message.push(simulateData);
-        this._recordLastNum = this._chatList.numItems;
-        this._chatList.numItems += 1;
+        if(this._recordChatType == ChatType.TalkType){
+            //玩家发送
+            let simulateData:object = {};
+            simulateData["QuestionItem"] = {};
+            simulateData["QuestionItem"]["Type"] = this._MessageType.PlayerWord;
+            simulateData["QuestionItem"]["Content"] = {};
+            simulateData["QuestionItem"]["Content"]["Text"] = this._recordWillSendTxt;
+            this._Message.push(simulateData);
+            this._recordLastNum = this._chatList.numItems;
+            this._chatList.numItems += 1;
+        }
         if (this._recordIsNeedPlayerInout) {
             this._recordIsNeedPlayerInout = false;
             ConfigMgr.GetInstance().SetRecordInput(this._inputTxt.text);
@@ -240,14 +317,19 @@ export default class ChatWnd extends BaseWindow{
             }
         }
         if (data.QuestionItem.Type == this._MessageType.NeedInput) {
-            this._recordIsNeedPlayerInout = true;
-            //播放动画
-            this._view.getTransition("t0").play();
-            this._inputBox.visible = true;
-            //自动设置玩家名字
+            if(this._recordChatType == ChatType.TalkType){
+                //播放动画
+                this._view.getTransition("t0").play();
+                this._inputBox.visible = true;
+                //自动设置玩家名字
+            }
+            else if(this._recordChatType == ChatType.FullScreenType){
+                //TODO
+            }
             this._inputTxt.text = SDKManager.GetInstance().GetPlayerName();
             this._recordWillSendTxt = this._inputTxt.text;
             ConfigMgr.GetInstance().SetRecordInput(this._inputTxt.text);
+            this._recordIsNeedPlayerInout = true;
         }
     }
 
@@ -262,15 +344,19 @@ export default class ChatWnd extends BaseWindow{
         let str:string = orderStr + "," + chooseStr;
         // this._chooseRes.push(str);
 
-        //模拟玩家发送
-        let simulateData:object = {};
-        simulateData["QuestionItem"] = {};
-        simulateData["QuestionItem"]["Type"] = this._MessageType.PlayerWord;
-        simulateData["QuestionItem"]["Content"] = {};
-        simulateData["QuestionItem"]["Content"]["Text"] = data.param2;
-        this._Message.push(simulateData);
-        this._recordLastNum = this._chatList.numItems;
-        this._chatList.numItems += 1;
+        if(this._recordChatType == ChatType.TalkType){
+            //模拟玩家发送
+            let simulateData:object = {};
+            simulateData["QuestionItem"] = {};
+            simulateData["QuestionItem"]["Type"] = this._MessageType.PlayerWord;
+            simulateData["QuestionItem"]["Content"] = {};
+            simulateData["QuestionItem"]["Content"]["Text"] = data.param2;
+            this._Message.push(simulateData);
+            this._recordLastNum = this._chatList.numItems;
+            this._chatList.numItems += 1;
+        }
+
+
         if(this._recordNowItem.QuestionItem.Content.Choice[data.param].NextOrder != "-1"){
             let nextParam:object = {};
             nextParam["NextOrder"] = this._recordNowItem.QuestionItem.Content.Choice[data.param].NextOrder;
@@ -288,13 +374,14 @@ export default class ChatWnd extends BaseWindow{
             let url = "/quce_server/user/GetResult";
             MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqTheResSuccess,this.ReqTheResDef);
         }
-       
     }
 
     //获取答题结果成功
     public ReqTheResSuccess(param:any):void{
-        //模拟服务器发送文字
-        this.SimulateSendServerWord("Analyzing your result...");
+        if(this._recordChatType == ChatType.TalkType){
+            //模拟服务器发送文字
+            this.SimulateSendServerWord("Analyzing your result...");
+        }
         let data: any = param.data;
         WindowManager.GetInstance().OpenWindow<EndWnd>("EndWnd", "EndWnd", EndWnd, data, 0);
 
@@ -328,16 +415,29 @@ export default class ChatWnd extends BaseWindow{
                 break;
             }
             case this._MessageType.Word:{
-                let prefab:LeftChatPrefab = obj as LeftChatPrefab;
-                prefab.SetHeadIcon(_message.AvaterURL);
-                prefab.SetTxt(_message.QuestionItem.Content.Text);
+                if(this._recordChatType == ChatType.TalkType){
+                    let prefab:LeftChatPrefab = obj as LeftChatPrefab;
+                    prefab.SetHeadIcon(_message.AvaterURL);
+                    prefab.SetTxt(_message.QuestionItem.Content.Text);
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    let prefab:FullScreenWordPrefab = obj as FullScreenWordPrefab;
+                    prefab.SetTxt(_message.QuestionItem.Content.Text);
+                }
                 break;
             }
             case this._MessageType.WordChoose:{
-                let prefab:LeftListChatPrefab = obj as LeftListChatPrefab;
-                prefab.SetHeadIcon(_message.AvaterURL);
-                prefab.SetQuestion(_message.QuestionItem.Content.QuestionDescription);
-                prefab.SetQuestionList(_message.QuestionItem.Content.Choice);
+                if(this._recordChatType == ChatType.TalkType){
+                    let prefab:LeftListChatPrefab = obj as LeftListChatPrefab;
+                    prefab.SetHeadIcon(_message.AvaterURL);
+                    prefab.SetQuestion(_message.QuestionItem.Content.QuestionDescription);
+                    prefab.SetQuestionList(_message.QuestionItem.Content.Choice);
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    let prefab:FullScreenChoosePrefab = obj as FullScreenChoosePrefab;
+                    prefab.SetQuestion(_message.QuestionItem.Content.QuestionDescription);
+                    prefab.SetQuestionList(_message.QuestionItem.Content.Choice);
+                }
                 break;
             }
             case this._MessageType.Sprite:{
@@ -367,13 +467,19 @@ export default class ChatWnd extends BaseWindow{
                 break;
             }
             case this._MessageType.NeedInput: {
-                let prefab: LeftChatPrefab = obj as LeftChatPrefab;
-                prefab.SetHeadIcon(_message.AvaterURL);
-                prefab.SetTxt(_message.QuestionItem.Content.Text);
+                if(this._recordChatType == ChatType.TalkType){
+                    let prefab: LeftChatPrefab = obj as LeftChatPrefab;
+                    prefab.SetHeadIcon(_message.AvaterURL);
+                    prefab.SetTxt(_message.QuestionItem.Content.Text);
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    let prefab:FullScreenWordPrefab = obj as FullScreenWordPrefab;
+                    prefab.SetTxt(_message.QuestionItem.Content.Text);
+                }
                 break;
             }
         }
-        this._chatList.scrollToView(idx);
+        this._chatList.scrollToView(idx,true);
     }
 
     //点击回退上一题
@@ -394,34 +500,74 @@ export default class ChatWnd extends BaseWindow{
         let url:string;
         switch(messageType.QuestionItem.Type){
             case this._MessageType.PlayerWord:{
-                url = "ui://Chat/RightChat";
+                if(this._recordChatType == ChatType.TalkType){
+                    url = "ui://Chat/RightChat";
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    console.log("不应出现的类型！");
+                }
                 break;
             }
             case this._MessageType.Word:{
-                url = "ui://Chat/LeftChat";
+                if(this._recordChatType == ChatType.TalkType){
+                    url = "ui://Chat/LeftChat";
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    url = "ui://Chat/FullScreenWord";
+                }
                 break;
             }
             case this._MessageType.WordChoose:{
-                url = "ui://Chat/LeftListChat";
+                if(this._recordChatType == ChatType.TalkType){
+                    url = "ui://Chat/LeftListChat";
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    url = "ui://Chat/FullScreenChoosePrefab";
+                }
                 break;
             }
             case this._MessageType.Sprite:{
-                url = "ui://Chat/LeftSpriteChat";
+                if(this._recordChatType == ChatType.TalkType){
+                    url = "ui://Chat/LeftSpriteChat";
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    
+                }
                 break;
             }
             case this._MessageType.QuestionState:{
-                url = "ui://Chat/QuestionState";
+                if(this._recordChatType == ChatType.TalkType){
+                    url = "ui://Chat/QuestionState";
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    console.log("不应出现的类型！");                    
+                }
                 break;
             }
             case this._MessageType.QuestionReturnBtn:{
-                url = "ui://Chat/returnLast";
+                if(this._recordChatType == ChatType.TalkType){
+                    url = "ui://Chat/returnLast";
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    console.log("不应出现的类型！");                    
+                }
             }
             case this._MessageType.ScreenShotSprite: {
-                url = "ui://Chat/ShotSprite";
+                if(this._recordChatType == ChatType.TalkType){
+                    url = "ui://Chat/ShotSprite";
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    
+                }
                 break;
             }
             case this._MessageType.NeedInput: {
-                url = "ui://Chat/LeftChat";
+                if(this._recordChatType == ChatType.TalkType){
+                    url = "ui://Chat/LeftChat";
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                     
+                }
                 break;
             }
             default:{

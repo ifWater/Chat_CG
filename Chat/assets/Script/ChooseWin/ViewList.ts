@@ -2,7 +2,6 @@ import WindowManager from '../Base/WindowManager';
 import ViewBtn from './ViewBtn';
 import ChatWnd from '../ChatWin/ChatWnd';
 import ScrollPaneUp from './ScrollPaneUp';
-import FaceBookSDK from '../Base/FaceBookSDK';
 import MessageMangager from '../Base/MessageManager';
 import DelayTimeManager from '../Base/DelayTimeManager';
 import SDKManager from '../Base/SDKManager';
@@ -116,10 +115,14 @@ export default class ViewList extends fgui.GList{
             return;
         }
         let item:ViewBtn = <ViewBtn>obj;
+        // console.log("--------->",this._data[idx])
         item.SetNumTxt(this._data[idx].ClickCount);
         item.SetImage(this._data[idx].ImgURL);
         item.SetUUID(this._data[idx].ID);
         item.SetStartNum(this._data[idx].StartOrder);
+        item.SetChatType(this._data[idx].ShowMethod);
+        item.SetFullScreenBgImgUrl(this._data[idx].BgImageURL);
+        item.SetAudioUrl(this._data[idx].BgAudioURL);
     }
 
     public OnItemClickCall(item:fgui.GObject):void{
@@ -146,6 +149,9 @@ export default class ViewList extends fgui.GList{
         let openData:object = {};
         openData["NextOrder"] = this._nowClickItem.GetStartNum();
         openData["CategoryContentID"] = this._nowClickItem.GetUUID();
+        openData["ShowMethod"] = this._nowClickItem.GetChatType();
+        openData["BgImageURL"] = this._nowClickItem.GetFullScreenBgImgUrl();
+        openData["BgAudioURL"] = this._nowClickItem.GetAudioUrl();
         //打开聊天界面
         WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData);
 

@@ -7,6 +7,9 @@ export default class ViewBtn extends fgui.GButton{
     private _lastNum:number;
     private _uuid:string;
     private _startNum:string;
+    private _chatType:number;
+    private _bgImageUrl:string;
+    private _bgAudio:string;
 
     public constructor(){
         super();
@@ -76,5 +79,35 @@ export default class ViewBtn extends fgui.GButton{
 
     public GetStartNum():string{
         return this._startNum;
+    }
+
+    //设置题目类型
+    public SetChatType(type:number):void{
+        this._chatType = type;
+    }
+
+    //获取题目类型
+    public GetChatType():number{
+        return this._chatType;
+    }
+
+    //设置全屏下的背景图片地址
+    public SetFullScreenBgImgUrl(url:string):void{
+        this._bgImageUrl = url;
+    }
+
+    //获取图片地址
+    public GetFullScreenBgImgUrl():string{
+        return this._bgImageUrl;
+    }
+
+    //设置背景音乐的地址
+    public SetAudioUrl(url:string):void{
+        this._bgAudio = url;
+    }
+
+    //获取背景音乐的地址
+    public GetAudioUrl():string{
+        return this._bgAudio;
     }
 }

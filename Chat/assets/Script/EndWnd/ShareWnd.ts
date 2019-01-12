@@ -108,6 +108,7 @@ export default class ShareWnd extends BaseWindow{
     public ShareThisSprite():void{
         let base64 = Tools.GetBase64ByTexture(this._Tex);
         // console.log(base64);
-        SDKManager.GetInstance().StartShareCall(base64,"",()=>{console.log("分享结束")},this);
+        SDKManager.GetInstance().SendMessageToFrends(base64);
+        // SDKManager.GetInstance().StartShareCall(base64,"",()=>{console.log("分享结束")},this);
     }
 }
