@@ -5,7 +5,7 @@ import LeftSpriteChatPrefab from './LeftSpriteChatPrefab';
 import LeftListChatPrefab from './LeftListChatPrefab';
 import QuestionState from './QuestionState';
 import EventManager from '../Base/EventManager';
-import{EventEnum,EventDataThird,EventDataTwo} from '../Base/EventEnum';
+import{EventEnum,EventDataThird,EventDataTwo, EventDataOne} from '../Base/EventEnum';
 import MessageManager from '../Base/MessageManager';
 import WindowManager from '../Base/WindowManager';
 import EndWnd from '../EndWnd/EndWnd';
@@ -17,6 +17,12 @@ import ConfigMgr from '../Base/ConfigMgr';
 import SDKManager from '../Base/SDKManager';
 import FullScreenWordPrefab from './FullScreenWordPrefab';
 import FullScreenChoosePrefab from './FullScreenChoosePrefab';
+import SpriteChoosePrefab from './SpriteChoosePrefab';
+import FullScreenSpriteChoosePrefab from './FullScreenSpriteChoosePrefab';
+import FullScreenInputWordPrefab from './FullScreenInputWordPrefab';
+import DelayTimeManager from '../Base/DelayTimeManager';
+import FSChooseBoxPrefab from './FSChooseBoxPrefab';
+import ChooseBoxPrefab from './ChooseBoxPrefab';
 
 interface MessageType{
     Word:string;
@@ -31,6 +37,7 @@ interface MessageType{
     QuestionReturnBtn:string;
     ScreenShotSprite: string;
     NeedInput: string;
+    ChooseBox:string;
 }
 
 enum ChatType{
@@ -52,12 +59,10 @@ export default class ChatWnd extends BaseWindow{
     private _talkGroup:fgui.GGroup;
     private _talkList:fgui.GList;
     //全屏输入框
-    private _FullInputTxt:fgui.GTextInput;
-    private _FullSendBtn:fgui.GLoader;
-    private _FullGroup:fgui.GGroup;
     private _FullList:fgui.GList;
     //全屏图片
     private _FullimageBg:fgui.GLoader;
+    private _FullimgBg2:fgui.GImage;
 
     private _Message:Array<any> = [];
     //服务器定制内容类型ID
@@ -87,18 +92,34 @@ export default class ChatWnd extends BaseWindow{
     //记录当前的聊天模式
     private _recordChatType:number = 0;
 
+    //为实现（正在为你生成结果）记录时间
+    private _recordInitResTime:number = 3;
+    //记录服务器下发时间与绘制所使用的时间
+    private _recordUseTime:number = 0;
+    //记录收到的绘制数据
+    private _recordPaintData:any = null;
+    //记录动效组件
+    private _recordWaitEff:fgui.GGroup;
+    //记录动效特效
+    private _WaitEff:fgui.Transition;
+    //记录动效组件（点）
+    private _WaitEff2:fgui.Transition;
+    //在加载结果特效界面卡住时，给与用户一个返回的按钮
+    private ReturnChatMainWnd:fgui.GLoader;
 
+
+
+    //--------选项框模式---------------
+    private _chooseBoxWnd:fgui.GGroup;       //选项框组
+    private _chooseBoxWndBgBtn:fgui.GLoader;    //选项框背景
+    private _chooseBoxList:fgui.GList;          //选项框列表
+    private _recordCBData:Array<any> = [];      //记录服务器下发的数据
+    private _recordChooseBoxWnd:FSChooseBoxPrefab = null;   //记录当前的选项框对象
+    //--------------------------------
     private _playerHeadIcon:string = null;
     
     OnLoadToExtension(){
-        fgui.UIObjectFactory.setExtension("ui://Chat/RightChat",RightChatPrefab);
-        fgui.UIObjectFactory.setExtension("ui://Chat/LeftChat",LeftChatPrefab);
-        fgui.UIObjectFactory.setExtension("ui://Chat/LeftSpriteChat",LeftSpriteChatPrefab);
-        fgui.UIObjectFactory.setExtension("ui://Chat/LeftListChat",LeftListChatPrefab)
-        fgui.UIObjectFactory.setExtension("ui://Chat/QuestionState",QuestionState);
-        fgui.UIObjectFactory.setExtension("ui://Chat/ShotSprite", ShotSpritePrefab);
-        fgui.UIObjectFactory.setExtension("ui://Chat/FullScreenWord",FullScreenWordPrefab);
-        fgui.UIObjectFactory.setExtension("ui://Chat/FullScreenChoosePrefab",FullScreenChoosePrefab);
+        
     }
 
     OnCreate(){
@@ -110,17 +131,26 @@ export default class ChatWnd extends BaseWindow{
         this._returnBtn = this._view.getChild("n7").asLoader;
         this._talkGroup = this._view.getChild("n13").asGroup;
         this._FullimageBg = this._view.getChild("n14").asLoader;
-        this._FullInputTxt = this._view.getChild("n15").asTextInput;
-        this._FullSendBtn = this._view.getChild("n16").asLoader;
-        this._FullGroup = this._view.getChild("n17").asGroup;
+        this._FullimgBg2 = this._view.getChild("n19").asImage;
         this._FullList = this._view.getChild("n18").asList;
+        this._recordWaitEff = this._view.getChild("n23").asGroup;
+        this._WaitEff = this._view.getTransition("t1");
+        this._WaitEff2 = this._view.getTransition("t2");
+        this.ReturnChatMainWnd = this._view.getChild("n26").asLoader;
+        this._chooseBoxWnd = this._view.getChild("n28").asGroup;
+        this._chooseBoxWndBgBtn = this._view.getChild("n27").asLoader;
+        this._chooseBoxList = this._view.getChild("n29").asList;
 
+
+        this._chooseBoxWndBgBtn.onClick(this.CloseChooseBoxWnd,this);
+        this._chooseBoxList.itemRenderer = this.ChooseBoxRenderListCall.bind(this);
+        this._chooseBoxList.on(fgui.Event.CLICK_ITEM,this.BoxClickCall,this);
+        
         this._talkInputTxt.on(fgui.Event.TEXT_CHANGE,this.InputTxtChangeCall,this);
         this._talkSendBtn.onClick(this.SendTxtCall,this);
-        this._FullInputTxt.on(fgui.Event.TEXT_CHANGE,this.InputTxtChangeCall,this);
-        this._FullSendBtn.onClick(this.SendTxtCall,this);
 
         this._returnBtn.onClick(this.ReturnChooseWnd,this);
+        this.ReturnChatMainWnd.onClick(this.ReturnChooseWnd,this);
 
         this._FullList.itemProvider = this.ReturnChatPrefab.bind(this);
         this._FullList.itemRenderer = this.RenderChatListCall.bind(this);
@@ -139,26 +169,43 @@ export default class ChatWnd extends BaseWindow{
         this._MessageType.QuestionReturnBtn = "ReturnBtn";
         this._MessageType.ScreenShotSprite = "ScreenShot";
         this._MessageType.NeedInput = "question_user_input_name";
+        this._MessageType.ChooseBox = "question_chooseBox_choice";
     }
 
     OnOpen(param:any){
         //进行模式切换
+        this.ResetData();
+        this._recordWaitEff.visible = false;
+        this._recordInitResTime = 3;
+        this._recordUseTime = 0;
+        this._recordPaintData = null;
+        this._FullimageBg.texture = null;
+        this._Message = [];
         this.SwitchUI(param.ShowMethod,param.BgImageURL);
-        
+        this._chatList.numItems = 0;
+        this._chatList.scrollPane.touchEffect = true;
         this._recordIsNeedPlayerInout = false;
         this._categoryContentID = param.CategoryContentID;
         this._recordFirstSendData = param;
-        //隐藏输入框
-        this._FullGroup.visible = false;
-        this._talkGroup.visible = false;
         //向服务器请求聊天数据
         this.ReqChatData(param);
+        EventManager.AddEventListener(EventEnum.OpenChooseBox,this.OpenChooseBoxWnd,this);
         EventManager.AddEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
         EventManager.AddEventListener(EventEnum.ScreenShotOver,this.ShowScreenShot,this);
         EventManager.AddEventListener(EventEnum.ReqAgainTest,this.AgainTest,this);
+        EventManager.AddEventListener(EventEnum.ReqNextData,this.ClickReqNextData,this);
+        EventManager.AddEventListener(EventEnum.FSInputTo,this.ListenSendTxtCall,this);
     }
 
     OnClose(){
+        this.ResetData();
+        this._WaitEff.stop(true,false);
+        this._WaitEff2.stop(true,false);
+        this._recordWaitEff.visible = false;
+        this._recordInitResTime = 3;
+        this._recordUseTime = 0;
+        this._recordPaintData = null;
+        this._chatList.scrollPane.touchEffect = true;
         this._recordIsNeedPlayerInout = false;
         this._chatList.numItems = 0;
         this._Message = [];
@@ -166,20 +213,74 @@ export default class ChatWnd extends BaseWindow{
         EventManager.RemoveEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
         EventManager.RemoveEventListener(EventEnum.ScreenShotOver,this.ShowScreenShot,this);
         EventManager.RemoveEventListener(EventEnum.ReqAgainTest,this.AgainTest,this);
+        EventManager.RemoveEventListener(EventEnum.ReqNextData,this.ClickReqNextData,this);
+        EventManager.RemoveEventListener(EventEnum.FSInputTo,this.ListenSendTxtCall,this);
+        EventManager.RemoveEventListener(EventEnum.OpenChooseBox,this.OpenChooseBoxWnd,this);        
+        DelayTimeManager.RemoveDelay(this.ShowRes,this);
     }
+
+    public ResetData():void{
+        this._chooseBoxList.numItems = 0;
+        this._chooseBoxWnd.visible = false;
+        this._recordCBData = [];
+    }
+
+//--------------------------------------------------------------------
+//-----------星座类选项框模式
+
+    //关闭选项框
+    public CloseChooseBoxWnd():void{
+        this._chooseBoxList.numItems = 0;
+        this._chooseBoxWnd.visible = false;
+        this._recordCBData = [];
+        this._recordChooseBoxWnd.ResetNowClick();
+    }
+
+    //打开选项框
+    public OpenChooseBoxWnd(_data:EventDataOne<FSChooseBoxPrefab>):void{
+        this._chooseBoxWnd.visible = true;
+        this._recordChooseBoxWnd = _data.param;
+        this._recordCBData = _data.param.GetServerData();
+        this._chooseBoxList.numItems = this._recordCBData.length;
+        this._chooseBoxList.ensureBoundsCorrect();
+        for(let i = 0;i < this._chooseBoxList.numItems;i++){
+            let prefab:ChooseBoxPrefab = this._chooseBoxList.getChildAt(i) as ChooseBoxPrefab;
+            if(this._chooseBoxList.isChildInView(prefab)){
+                prefab.PlayEff(i*0.2);
+            }
+        }
+    }
+
+
+    //选项框的列表渲染回调
+    public ChooseBoxRenderListCall(idx:number,obj:fgui.GObject):void{
+        let prefab:ChooseBoxPrefab = obj as ChooseBoxPrefab;
+        prefab.SetBgSprite(idx);
+        prefab.SetDescriptTxt(this._recordCBData[idx].DescriptionText);
+    }
+
+    //选项的点击回调
+    public BoxClickCall(obj:fgui.GObject):void{
+        let clickItem:ChooseBoxPrefab = obj as ChooseBoxPrefab;
+        let idx = this._chooseBoxList.getChildIndex(clickItem);
+        this._recordChooseBoxWnd.SetNowChooseData(idx,this._recordCBData[idx].DescriptionText);
+        this.CloseChooseBoxWnd();
+    }
+//---------------------------------------------------------------------
 
     //根据服务器下发的聊天模式进行切换界面
     public SwitchUI(_type:number,url:string){
+        //隐藏输入框
+        this._talkGroup.visible = false;
         this._recordChatType = _type;
         this._FullList.visible = false;
         this._talkList.visible = false;
         switch(_type){
             case ChatType.FullScreenType:{
                 this._chatList = this._FullList;
-                this._inputTxt = this._FullInputTxt;
-                this._inputBox = this._FullGroup;
                 Tools.ChangeURL(ConfigMgr.ServerIP + url,this._FullimageBg);
                 this._FullimageBg.visible = true;
+                this._FullimgBg2.visible = true;
                 break;
             }
             case ChatType.TalkType:{
@@ -187,10 +288,34 @@ export default class ChatWnd extends BaseWindow{
                 this._inputTxt = this._talkInputTxt;
                 this._inputBox = this._talkGroup;
                 this._FullimageBg.visible = false;
+                this._FullimgBg2.visible = false;
                 break;
             }
         }
         this._chatList.visible = true;
+    }
+
+    //全屏模式下监听事件去发送文本
+    public ListenSendTxtCall(data:EventDataOne<string>):void{
+        let _txt = data.param;
+        if(_txt == "" || _txt == undefined){
+            return;
+        }
+        if(this._recordIsNeedPlayerInout){
+            this._recordIsNeedPlayerInout = false;
+            ConfigMgr.GetInstance().SetRecordInput(_txt);
+            let reqData: object = {};
+            reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
+            reqData["CategoryContentID"] = this._categoryContentID;
+            reqData["InputStr"] = _txt;
+            let url = "/quce_server/user/GetResult";
+            this._recordUseTime = new Date().getTime();
+            this._recordWaitEff.visible = true;
+            this._WaitEff.play(()=>{
+                this._WaitEff2.play(()=>{},-1);
+            });
+            MessageManager.GetInstance().SendMessage(reqData, url, this, this.ReqTheResSuccess, this.ReqTheResDef);
+        }
     }
 
     //再测一次
@@ -208,6 +333,31 @@ export default class ChatWnd extends BaseWindow{
     //截图完毕,在聊天框展示小图片
     //全屏模式直接出结果图
     public ShowScreenShot(data:any){
+        this._recordPaintData = data;
+        this._recordUseTime = (new Date().getTime() - this._recordUseTime)/1000;
+        if(CC_DEBUG){
+            console.log("使用时间为",this._recordUseTime);
+        }
+        //实际消耗时间大于规定秒数，立马弹出结果
+        if(this._recordUseTime > this._recordInitResTime){
+            this.ShowRes();
+        }
+        //消耗时间小于1秒，则（相减）再等待一定时间
+        else{
+            let waitTime = this._recordInitResTime - this._recordUseTime;
+            if(CC_DEBUG){
+                console.log("需要等待时间：",waitTime);
+            }
+            DelayTimeManager.AddDelayOnce(waitTime,this.ShowRes,this);
+        }
+    }
+
+    //弹出结果界面
+    public ShowRes():void{
+        this._recordWaitEff.visible = false;
+        this._WaitEff.stop(true,false);
+        this._WaitEff2.stop(true,false);
+        let data:any = this._recordPaintData;
         if(this._recordChatType == ChatType.TalkType){
             this.SimulatSendSprite(data.param,data.param2,data.param3);
             this.SimulateSendServerWord("Click above image for details");
@@ -217,6 +367,7 @@ export default class ChatWnd extends BaseWindow{
             _recordNowResData["Tex"] = data.param;
             _recordNowResData["Height"] = data.param3;
             _recordNowResData["Width"] = data.param2;
+            _recordNowResData["CategoryContentID"] = this._categoryContentID;
             WindowManager.GetInstance().OpenWindow<ShareWnd>("EndWnd","ShareWnd",ShareWnd,_recordNowResData);
         }
     }
@@ -265,6 +416,11 @@ export default class ChatWnd extends BaseWindow{
             reqData["CategoryContentID"] = this._categoryContentID;
             reqData["InputStr"] = this._recordWillSendTxt;
             let url = "/quce_server/user/GetResult";
+            this._recordUseTime = new Date().getTime();
+            this._recordWaitEff.visible = true;
+            this._WaitEff.play(()=>{
+                this._WaitEff2.play(()=>{},-1);
+            });
             MessageManager.GetInstance().SendMessage(reqData, url, this, this.ReqTheResSuccess, this.ReqTheResDef);
         }
         this._inputTxt.text = "";
@@ -309,7 +465,7 @@ export default class ChatWnd extends BaseWindow{
         this._recordServerIcon = data.AvaterURL;
         //判断是否继续请求
         if ((data.QuestionItem.Type == this._MessageType.Word) || (data.QuestionItem.Type == this._MessageType.Sprite)) {
-            if(data.QuestionItem.NextOrder != "-1"){
+            if(data.QuestionItem.NextOrder != "-1" && this._recordChatType == ChatType.TalkType){
                 let nextParam:object = {};
                 nextParam["NextOrder"] = data.QuestionItem.NextOrder;
                 nextParam["CategoryContentID"] = this._categoryContentID;
@@ -320,17 +476,30 @@ export default class ChatWnd extends BaseWindow{
             if(this._recordChatType == ChatType.TalkType){
                 //播放动画
                 this._view.getTransition("t0").play();
-                this._inputBox.visible = true;
                 //自动设置玩家名字
+                this._inputBox.visible = true;
+                this._inputTxt.text = SDKManager.GetInstance().GetPlayerName();
+                this._recordWillSendTxt = this._inputTxt.text;
+                ConfigMgr.GetInstance().SetRecordInput(this._inputTxt.text);
             }
             else if(this._recordChatType == ChatType.FullScreenType){
                 //TODO
             }
-            this._inputTxt.text = SDKManager.GetInstance().GetPlayerName();
-            this._recordWillSendTxt = this._inputTxt.text;
-            ConfigMgr.GetInstance().SetRecordInput(this._inputTxt.text);
             this._recordIsNeedPlayerInout = true;
         }
+
+        if(data.QuestionItem.NextOrder == "-1"){
+            this._chatList.scrollPane.touchEffect = false;
+        }
+
+    }
+
+    //全屏模式下点击请求下一条数据
+    public ClickReqNextData():void{
+        let nextParam:object = {};
+        nextParam["NextOrder"] = this._recordNowItem.QuestionItem.NextOrder;
+        nextParam["CategoryContentID"] = this._categoryContentID;
+        this.ReqChatData(nextParam);
     }
 
     //请求数据失败
@@ -372,6 +541,11 @@ export default class ChatWnd extends BaseWindow{
             reqData["CategoryContentID"] = this._categoryContentID;
             reqData["InputStr"] = resStr;
             let url = "/quce_server/user/GetResult";
+            this._recordUseTime = new Date().getTime();
+            this._recordWaitEff.visible = true;
+            this._WaitEff.play(()=>{
+                this._WaitEff2.play(()=>{},-1);
+            });
             MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqTheResSuccess,this.ReqTheResDef);
         }
     }
@@ -406,6 +580,11 @@ export default class ChatWnd extends BaseWindow{
             return;
         }
         let _message = this._Message[idx];
+        if(this._recordChatType == ChatType.FullScreenType){
+            let a = obj as fgui.GComponent;
+            a.width = this._chatList.width;
+            a.height = this._chatList.height;
+        }
         switch(_message.QuestionItem.Type){
             case this._MessageType.PlayerWord:{
                 let prefab:RightChatPrefab = obj as RightChatPrefab;
@@ -473,10 +652,44 @@ export default class ChatWnd extends BaseWindow{
                     prefab.SetTxt(_message.QuestionItem.Content.Text);
                 }
                 else if(this._recordChatType == ChatType.FullScreenType){
-                    let prefab:FullScreenWordPrefab = obj as FullScreenWordPrefab;
+                    let prefab:FullScreenInputWordPrefab = obj as FullScreenInputWordPrefab;
                     prefab.SetTxt(_message.QuestionItem.Content.Text);
+                    prefab.SetQuestionAllTxt(this._recordFirstSendData.Title);
                 }
                 break;
+            }
+            case this._MessageType.SpriteChoose:{
+                if(this._recordChatType == ChatType.TalkType){
+                    let prefab:SpriteChoosePrefab = obj as SpriteChoosePrefab;
+                    prefab.SetHeadIcon(_message.AvaterURL);
+                    let width = _message.QuestionItem.Content.ImgWidth;
+                    let height = _message.QuestionItem.Content.ImgHeight;
+                    prefab.SetQuestionSprite(_message.QuestionItem.Content.ImgURL,width,height);
+                    prefab.SetQuestionList(_message.QuestionItem.Content.Choice);
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    let prefab:FullScreenSpriteChoosePrefab = obj as FullScreenSpriteChoosePrefab;
+                    let width = _message.QuestionItem.Content.ImgWidth;
+                    let height = _message.QuestionItem.Content.ImgHeight;
+                    prefab.SetQuestionSprite(_message.QuestionItem.Content.ImgURL,width,height);
+                    prefab.SetQuestionList(_message.QuestionItem.Content.Choice);
+                }
+                break;
+            }
+            case this._MessageType.ChooseBox:{
+                if(this._recordChatType == ChatType.TalkType){
+                    console.log("暂不支持的类型");
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    let prefab:FSChooseBoxPrefab = obj as FSChooseBoxPrefab;
+                    prefab.SetDescriptTxt(_message.QuestionItem.Content.QuestionDescription);
+                    prefab.SetQuestionData(_message.QuestionItem.Content.Choice);
+                    prefab.SetQuestionAllTxt(this._recordFirstSendData.Title);
+                }
+                break;
+            }
+            default:{
+                console.log("检查类型，类型错误！",_message.QuestionItem.Type);
             }
         }
         this._chatList.scrollToView(idx,true);
@@ -531,7 +744,7 @@ export default class ChatWnd extends BaseWindow{
                     url = "ui://Chat/LeftSpriteChat";
                 }
                 else if(this._recordChatType == ChatType.FullScreenType){
-                    
+                    console.log("不应该出现的类型");
                 }
                 break;
             }
@@ -557,7 +770,7 @@ export default class ChatWnd extends BaseWindow{
                     url = "ui://Chat/ShotSprite";
                 }
                 else if(this._recordChatType == ChatType.FullScreenType){
-                    
+                    console.log("不应该出现的类型");
                 }
                 break;
             }
@@ -566,7 +779,25 @@ export default class ChatWnd extends BaseWindow{
                     url = "ui://Chat/LeftChat";
                 }
                 else if(this._recordChatType == ChatType.FullScreenType){
-                     
+                    url = "ui://Chat/FSInputWordPrefab";
+                }
+                break;
+            }
+            case this._MessageType.SpriteChoose:{
+                if(this._recordChatType == ChatType.TalkType){
+                    url = "ui://Chat/SpriteChoosePrefab";
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    url = "ui://Chat/FSPrefabSpriteChoose";
+                }
+                break;
+            }
+            case this._MessageType.ChooseBox:{
+                if(this._recordChatType == ChatType.TalkType){
+                    console.log("不应该出现的类型");
+                }
+                else if(this._recordChatType == ChatType.FullScreenType){
+                    url = "ui://Chat/FSChooseBoxPrefab";
                 }
                 break;
             }

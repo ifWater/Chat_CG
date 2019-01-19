@@ -2,7 +2,7 @@ import WindowManager from '../Base/WindowManager';
 import ViewBtn from './ViewBtn';
 import ChatWnd from '../ChatWin/ChatWnd';
 import ScrollPaneUp from './ScrollPaneUp';
-import MessageMangager from '../Base/MessageManager';
+import MessageManager from '../Base/MessageManager';
 import DelayTimeManager from '../Base/DelayTimeManager';
 import SDKManager from '../Base/SDKManager';
 export default class ViewList extends fgui.GList{
@@ -20,7 +20,6 @@ export default class ViewList extends fgui.GList{
     }
 
     protected onConstruct():void{
-        fgui.UIObjectFactory.setExtension("ui://Package1/viewBtn",ViewBtn);
         this._list = this.getChild("n2").asList;
         this._list.on(fgui.Event.CLICK_ITEM,this.OnItemClickCall,this);
         this._list.on(fgui.Event.PULL_UP_RELEASE,this.OnPullUpToRefresh,this);
@@ -31,8 +30,10 @@ export default class ViewList extends fgui.GList{
         this._ID = ID;
     }
 
-    public SetHeight(_height:number):void{
+    public SetSize(_width:number,_height:number):void{
+        // this.width = _width;
         this.height = _height;
+        // console.log("---->",_width,_height);
     }
     
     //根据ID向服务器请求相应的数据
@@ -40,21 +41,21 @@ export default class ViewList extends fgui.GList{
         if(this._InPullRefresh){
             let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
             footer.SetRefreshState(2);
-            this._list.scrollPane.lockFooter(footer.sourceHeight);
+            this._list.scrollPane.lockFooter(75);
         }
         let reqData:object = {};
         reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
         reqData["CategoryID"] = this._ID;
         reqData["Offset"] = this._list.numItems;
         let url = "/quce_server/user/GetCategoryContent";
-        MessageMangager.GetInstance().SendMessage(reqData,url,this,this.ReqListDataSuccess,this.ReqListDataDef);
+        MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqListDataSuccess,this.ReqListDataDef);
     }
 
     //重置下拉刷新组件
     private ResetRefreshCom():void{
         let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
-        footer.SetRefreshState(0);
         this._list.scrollPane.lockFooter(0);
+        footer.SetRefreshState(0);
     }
 
     //请求列表数据成功
@@ -67,7 +68,7 @@ export default class ViewList extends fgui.GList{
                 this._InPullRefresh = false;
                 let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
                 footer.SetRefreshState(3);
-                this._list.scrollPane.lockFooter(footer.sourceHeight);
+                this._list.scrollPane.lockFooter(75);
                 DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
             }
             this._data = this._data.concat(data);
@@ -79,7 +80,7 @@ export default class ViewList extends fgui.GList{
                 this._InPullRefresh = false;
                 let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
                 footer.SetRefreshState(4);
-                this._list.scrollPane.lockFooter(footer.sourceHeight);
+                this._list.scrollPane.lockFooter(75);
                 DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
             }
         }
@@ -92,7 +93,7 @@ export default class ViewList extends fgui.GList{
             this._InPullRefresh = false;
             let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
             footer.SetRefreshState(4);
-            this._list.scrollPane.lockFooter(footer.sourceHeight);
+            this._list.scrollPane.lockFooter(75);
             DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
         }
     }
@@ -115,7 +116,7 @@ export default class ViewList extends fgui.GList{
             return;
         }
         let item:ViewBtn = <ViewBtn>obj;
-        // console.log("--------->",this._data[idx])
+        // console.log("--------->",this._data[idx]) 
         item.SetNumTxt(this._data[idx].ClickCount);
         item.SetImage(this._data[idx].ImgURL);
         item.SetUUID(this._data[idx].ID);
@@ -123,6 +124,9 @@ export default class ViewList extends fgui.GList{
         item.SetChatType(this._data[idx].ShowMethod);
         item.SetFullScreenBgImgUrl(this._data[idx].BgImageURL);
         item.SetAudioUrl(this._data[idx].BgAudioURL);
+        item.SetTitleTxt(this._data[idx].ViewTitle);
+        item.SetQuestionTxt(this._data[idx].Title);
+        item.SetLeftRightTag(this._data[idx].TitleContegoryID);
     }
 
     public OnItemClickCall(item:fgui.GObject):void{
@@ -135,7 +139,7 @@ export default class ViewList extends fgui.GList{
             reqData["ID"] = itemObj.GetUUID();
             reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
             let url = "/quce_server/user/ClickCategoryContent";
-            MessageMangager.GetInstance().SendMessage(reqData,url,this,this.ReqClickAddNumSuccess,this.ReqClickAddNumDef);
+            MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqClickAddNumSuccess,this.ReqClickAddNumDef);
         }
     }
 
@@ -152,6 +156,8 @@ export default class ViewList extends fgui.GList{
         openData["ShowMethod"] = this._nowClickItem.GetChatType();
         openData["BgImageURL"] = this._nowClickItem.GetFullScreenBgImgUrl();
         openData["BgAudioURL"] = this._nowClickItem.GetAudioUrl();
+        openData["ViewTitle"] = this._nowClickItem.GetQuestionTxt();
+        openData["Title"] = this._nowClickItem.GetQuestionTxt();
         //打开聊天界面
         WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData);
 
@@ -166,7 +172,7 @@ export default class ViewList extends fgui.GList{
         let footer:ScrollPaneUp = <ScrollPaneUp>this._list.scrollPane.footer;
         if(footer.ReadyToRefresh()){
             footer.SetRefreshState(2);
-            this._list.scrollPane.lockFooter(footer.sourceHeight);
+            this._list.scrollPane.lockFooter(75);
             this._InPullRefresh = true;            
             //向服务器请求数据
             this.ReqDataInId();

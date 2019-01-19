@@ -102,7 +102,11 @@ export default class WindowManager{
         ViewList[ViewList.length-1].view.visible = false;
     }
 
-    public OpenChildWindow():void{
+    public OpenChildWindow<T>(wnd:BaseWindow,packageName:string,windowName:string,T,
+        param:any = null,WndType:number = 0):void{
+            this.OpenWindow<T>(packageName,windowName,T,param,WndType)
+            let newWnd = this.IsHaveThisWinndow<T>(windowName,T);
+            wnd.SetChildWnd(newWnd);
     }
 
     public CloseAllWindow():void{
@@ -120,11 +124,38 @@ export default class WindowManager{
         nowWin.windowScript = windowScript;
         let isCreate:BaseWindow = this.IsHaveThisWinndow<T>(windowName,T);
         if(isCreate){
-            windowScript.OnClose();
+            // windowScript.OnClose();
+            isCreate.OnClose();
             isCreate.GetView().visible = false;
+            let childs = isCreate.GetChildWnd();
+            if(childs&&childs.length > 0){
+                for(let data of childs){
+                    this._CloseWindow(data);
+                }
+            }
         }
         else{
             console.log("未记录此窗口,无法关闭!",nowWin);
+        }
+    }
+
+    private _CloseWindow(windowScript:any):void{
+        for(let i = 0;i<this._WindowList.length;i++){
+            let windowName = windowScript.GetView().name;
+            if(this._WindowList[i].windowName == windowName && this._WindowList[i].windowScript == windowScript){
+                this._WindowList[i].windowScript.OnClose();
+                this._WindowList[i].windowScript.GetView().visible = false;
+                break;
+            }
+        }
+    }
+
+    public CloseNameWindow<T>(windowName:string,T):void{
+        for(let i = 0;i<this._WindowList.length;i++){
+            if(this._WindowList[i].windowName == windowName && this._WindowList[i].windowScript instanceof T){
+                this._WindowList[i].windowScript.OnClose();
+                this._WindowList[i].windowScript.GetView().visible = false;
+            }
         }
     }
     

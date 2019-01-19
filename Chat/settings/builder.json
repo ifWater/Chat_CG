@@ -29,7 +29,7 @@
   },
   "startScene": "b4a32b0f-da50-4a48-9f35-10985ae6d979",
   "title": "QuizChat",
-  "webOrientation": "auto",
+  "webOrientation": "portrait",
   "wechatgame": {
     "REMOTE_SERVER_ROOT": "",
     "appid": "wx6ac3f5090a6b99c5",

@@ -11,10 +11,10 @@ export default class ScrollPaneUp extends fgui.GComponent{
     }
 
     private OnSizeChanged():void{
-        if(this._c1.selectedIndex == 2||this._c1.selectedIndex == 3){
+        if(this._c1.selectedIndex == 2||this._c1.selectedIndex == 3||this._c1.selectedIndex == 4){
             return;
         }
-        if(this.height > this.sourceHeight){
+        if(this.height >= this.sourceHeight){
             this._c1.selectedIndex = 1;
         }
         else{

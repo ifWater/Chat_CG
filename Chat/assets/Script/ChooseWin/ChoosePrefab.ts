@@ -15,11 +15,11 @@ export default class ChoosePrefab extends fgui.GButton{
         this._chooseSpr.visible = state;
         if(state){
             this._nameTxt.fontSize = 34;
-            this._nameTxt.alpha = 255;
+            this._nameTxt.alpha = 1;
         }
         else{
             this._nameTxt.fontSize = 28;
-            this._nameTxt.alpha = 163;
+            this._nameTxt.alpha = 0.8;
         }
     }
 

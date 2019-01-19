@@ -20,12 +20,16 @@ export default class DelayTimeManager {
 
     public static RemoveDelay(callFun: Function, call: any):void {
         let removeIdx = 0;
+        let isFind = false;
         for (let idx = 0;idx < this.RecordList.length;idx++) {
             if (this.RecordList[idx].call == call && this.RecordList[idx].callFun == callFun) {
+                isFind = true;
                 removeIdx = idx;
             }
         }
-        this.RecordList.splice(removeIdx, 1);
+        if(isFind){
+            this.RecordList.splice(removeIdx, 1);
+        }
     }
 
     public static Update(dt: number): void {

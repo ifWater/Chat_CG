@@ -26,20 +26,23 @@ export default class SearchEndWnd extends BaseWindow{
     private _recordLastNum:number = 0;
     private _recordWord:string;
 
+    private _searchTxt:fgui.GTextField;
+
     //记录是否是第一次请求
     private _recordFirstRes:boolean = true;
 
     OnLoadToExtension(){
-        fgui.UIObjectFactory.setExtension("ui://Package1/viewBtn",ViewBtn);
+       
     }
 
     OnCreate(){
         this._list = this.GetView().getChild("n22").asList;
         this._NoResTip = this.GetView().getChild("n29").asTextField;
+        this._searchTxt = this.GetView().getChild("n31").asTextField;
         this._list.on(fgui.Event.CLICK_ITEM,this.OnItemClickCall,this);
         this._list.on(fgui.Event.PULL_UP_RELEASE,this.OnPullUpToRefresh,this);
         this._list.itemRenderer = this.RenderListView.bind(this);
-        this._searchBtn = this.GetView().getChild("n23").asLoader;
+        this._searchBtn = this.GetView().getChild("n33").asLoader;
         this._returnBtn = this.GetView().getChild("n26").asLoader;
         this._returnBtn.onClick(this.ClickReturnBtn,this);
         this._searchBtn.onClick(this.ClickInputBtn,this);
@@ -48,6 +51,7 @@ export default class SearchEndWnd extends BaseWindow{
 
     OnOpen(data:string){
         this._data = [];
+        this._searchTxt.text = data;
         this._isCanClick = true;
         this._nowClickItem = null;
         this._InPullRefresh = false;
@@ -76,7 +80,7 @@ export default class SearchEndWnd extends BaseWindow{
         if(this._InPullRefresh){
             let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
             footer.SetRefreshState(2);
-            this._list.scrollPane.lockFooter(footer.sourceHeight);
+            this._list.scrollPane.lockFooter(75);
         }
         let reqData:object = {};
         reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
@@ -101,7 +105,7 @@ export default class SearchEndWnd extends BaseWindow{
                 this._InPullRefresh = false;
                 let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
                 footer.SetRefreshState(3);
-                this._list.scrollPane.lockFooter(footer.sourceHeight);
+                this._list.scrollPane.lockFooter(75);
                 DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
             }
             this._data = this._data.concat(data);
@@ -113,7 +117,7 @@ export default class SearchEndWnd extends BaseWindow{
                 this._InPullRefresh = false;
                 let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
                 footer.SetRefreshState(4);
-                this._list.scrollPane.lockFooter(footer.sourceHeight);
+                this._list.scrollPane.lockFooter(75);
                 DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
             }
             else{
@@ -132,7 +136,7 @@ export default class SearchEndWnd extends BaseWindow{
             this._InPullRefresh = false;
             let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
             footer.SetRefreshState(4);
-            this._list.scrollPane.lockFooter(footer.sourceHeight);
+            this._list.scrollPane.lockFooter(75);
             DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
         }
         this._recordFirstRes = false;
@@ -147,6 +151,12 @@ export default class SearchEndWnd extends BaseWindow{
         item.SetImage(this._data[idx].ImgURL);
         item.SetUUID(this._data[idx].ID);
         item.SetStartNum(this._data[idx].StartOrder);
+        item.SetChatType(this._data[idx].ShowMethod);
+        item.SetFullScreenBgImgUrl(this._data[idx].BgImageURL);
+        item.SetAudioUrl(this._data[idx].BgAudioURL);
+        item.SetTitleTxt(this._data[idx].ViewTitle);
+        item.SetQuestionTxt(this._data[idx].Title);
+        item.SetLeftRightTag(this._data[idx].TitleContegoryID);
     }
 
     public OnItemClickCall(item:fgui.GObject):void{
@@ -173,7 +183,11 @@ export default class SearchEndWnd extends BaseWindow{
 
         let openData:object = {};
         openData["NextOrder"] = this._nowClickItem.GetStartNum();
-        openData["CategoryContentID"] = this._ID;
+        openData["CategoryContentID"] = this._nowClickItem.GetUUID();
+        openData["ShowMethod"] = this._nowClickItem.GetChatType();
+        openData["BgImageURL"] = this._nowClickItem.GetFullScreenBgImgUrl();
+        openData["BgAudioURL"] = this._nowClickItem.GetAudioUrl();
+        openData["Title"] = this._nowClickItem.GetQuestionTxt();
         //打开聊天界面
         WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData,1);
 
@@ -188,7 +202,7 @@ export default class SearchEndWnd extends BaseWindow{
         let footer:ScrollPaneUp = <ScrollPaneUp>this._list.scrollPane.footer;
         if(footer.ReadyToRefresh()){
             footer.SetRefreshState(2);
-            this._list.scrollPane.lockFooter(footer.sourceHeight);
+            this._list.scrollPane.lockFooter(75);
             this._InPullRefresh = true;            
             //向服务器请求数据
             this.ReqDataInId();

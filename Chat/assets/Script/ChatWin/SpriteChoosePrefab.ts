@@ -1,11 +1,11 @@
-import EventManager from '../Base/EventManager';
-import{EventEnum,EventFunc,EventDataTwo} from '../Base/EventEnum';
-import ConfigMgr from '../Base/ConfigMgr';
-import Tools from '../Base/Tools';
+import Tools from "../Base/Tools";
+import ConfigMgr from "../Base/ConfigMgr";
+import EventManager from "../Base/EventManager";
+import{EventEnum,EventDataTwo} from '../Base/EventEnum';
 
-export default class LeftListChatPrefab extends fgui.GComponent{
+export default class SpriteChoosePrefab extends fgui.GComponent{
     private _headIcon:fgui.GLoader;
-    private _questionTxt:fgui.GTextField;
+    private _questionSprite:fgui.GLoader;
     private _questionList:fgui.GList;
     private _isCanClick:boolean = false;
     private _dataList:Array<any>;
@@ -16,7 +16,7 @@ export default class LeftListChatPrefab extends fgui.GComponent{
 
     protected onConstruct():void{
         this._headIcon = this.getChild("n4").asCom.getChild("n0").asLoader;
-        this._questionTxt = this.getChild("n2").asTextField;
+        this._questionSprite = this.getChild("n2").asLoader;
         this._questionList = this.getChild("n1").asList;
         this._questionList.itemRenderer = this.RenderListCall.bind(this);
         this._questionList.on(fgui.Event.CLICK_ITEM,this.ClickCall,this);
@@ -31,25 +31,25 @@ export default class LeftListChatPrefab extends fgui.GComponent{
         // this._headIcon.url = ConfigMgr.ServerIP + url;
     }
 
-    public SetQuestion(str:string):void{
-        if(!str){
-            console.log("传入字符串错误",str);
-        }
-        this._questionTxt.text = str;
+    public SetQuestionSprite(url:string,_width:number,_height:number):void{
+        this._questionSprite.url = url;
+        this._questionSprite.width = _width;
+        this._questionSprite.height = _height;
     }
 
     public SetQuestionList(data:any):void{
         this._questionList.numItems = 0;
         this._isCanClick = true;
         this._dataList = data;
-        this._questionList.numItems = this._dataList.length;
+        for(let i = 0;i < this._dataList.length;i++){
+            this._questionList.numItems += 1;
+        }
         this._questionList.resizeToFit(this._dataList.length);
     }
 
     public RenderListCall(idx:number,obj:fgui.GButton):void{
         obj.getController("btn").selectedIndex = 0;
         obj.getChild("n6").text = this._dataList[idx].DescriptionText;
-        // this._questionList.height = (obj.height + this._questionList.lineGap)*(idx+1);
     }
 
     public ClickCall(obj:fgui.GButton):void{

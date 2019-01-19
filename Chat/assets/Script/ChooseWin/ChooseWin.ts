@@ -18,9 +18,7 @@ export default class ChooseWin extends BaseWindow{
     private _headIcon:fgui.GLoader;
 
     OnLoadToExtension(){
-        fgui.UIObjectFactory.setExtension("ui://Package1/list",ViewList);
-        fgui.UIObjectFactory.setExtension("ui://Package1/choosePrefab",ChoosePrefab);
-        fgui.UIObjectFactory.setExtension("ui://Package1/pullUpScroll",ScrollPaneUp);
+        
     }
 
     OnCreate(){
@@ -36,7 +34,7 @@ export default class ChooseWin extends BaseWindow{
         this._listTitle.itemRenderer = this.RenderListTitle.bind(this);
 
         this._searchBtn = this._view.getChild("n13").asLoader;
-        this._headIcon = this._view.getChild("n16").asCom.getChild("n0").asLoader;
+        this._headIcon = this._view.getChild("n19").asCom.getChild("n0").asLoader;
 
         
         this._searchBtn.onClick(this.ClickSearchCall,this);
@@ -82,7 +80,7 @@ export default class ChooseWin extends BaseWindow{
     public RenderListPackge(idx:number,obj:fgui.GObject):void{
         let item:ViewList = <ViewList>obj;
         item.SetUUID(this._data[idx].ID);
-        item.SetHeight(this._list.height-20);
+        item.SetSize(this._list.width,this._list.height);
     }
     //标题列表的渲染回调
     public RenderListTitle(idx:number,obj:fgui.GObject):void{

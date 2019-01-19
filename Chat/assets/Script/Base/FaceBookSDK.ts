@@ -23,37 +23,38 @@ export default class FaceBookSDK{
     }
     //无成功回调分享
     public Share(imgBase64:string,titleTxt:string,callBack:Function,callObj:any){
+        console.log("进入分享接口")
+        if(CC_DEBUG){
+            console.log(imgBase64);
+        }
         this.FBInstant.shareAsync({
             intent:'SHARE',
             image:imgBase64,
             text:titleTxt
         }).then(()=>{
-            callBack();
+            callBack.call(callObj);
         })
     }
     //给好友发送消息
-    public SendMessageToFriends(baseImg:string):void{
-        this.FBInstant.updateAsync({
-            action: 'CUSTOM',
-            cta: 'Join The Fight',
-            image: baseImg,
-            text: {
-              default: 'X just invaded Y\'s village!',
-              localizations: {
-                ar_AR: 'X \u0641\u0642\u0637 \u063A\u0632\u062A ' +
-                '\u0642\u0631\u064A\u0629 Y!',
-                en_US: 'X just invaded Y\'s village!',
-                es_LA: '\u00A1X acaba de invadir el pueblo de Y!',
-              }
-            },
-            template: 'VILLAGE_INVASION',
-            data: { myReplayData: '...' },
-            strategy: 'IMMEDIATE',
-            notification: 'NO_PUSH',
-          }).then(function() {
-            // closes the game after the update is posted.
-            // this.FBInstant.quit();
-          });
+    public SendMessageToFriends(baseImg:string,titleTxt:string):void{
+        this.FBInstant.context.chooseAsync().then(()=>{
+            this.FBInstant.updateAsync({
+                action: 'CUSTOM',
+                cta: 'Play',
+                image: baseImg,
+                text: titleTxt,
+                template: 'VILLAGE_INVASION',
+                data: { myReplayData: '...' },
+                strategy: 'IMMEDIATE',
+                notification: 'NO_PUSH',
+              }).then(function() {
+                // closes the game after the update is posted.
+                // this.FBInstant.quit();
+                console.log("发送消息成功");
+              }).catch(()=>{
+                  console.log("调用失败");
+              });
+        });
     }
     //获取玩家头像icon
     public GetPlayerIcon():string{

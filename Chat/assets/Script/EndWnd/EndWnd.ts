@@ -34,7 +34,7 @@ export default class EndWnd extends BaseWindow{
         this._view.setSize(parseFloat(param.BgWidth),parseFloat(param.BgHeight));
         // this._view.setPosition(0,0);
         this._view.setPosition(cc.view.getVisibleSize().width/2, cc.view.getVisibleSize().height/2);
-        this._recordNewObj = [];0 
+        this._recordNewObj = [];
         if(param.DrawOrder){
             for (let i = 0; i < param.DrawOrder.length; i++){
                 if(param.DrawOrder[i].Type == "result_text"){
@@ -47,17 +47,37 @@ export default class EndWnd extends BaseWindow{
                     let posX: number = parseFloat(param.DrawOrder[i].Object.X);
                     let posY: number = parseFloat(param.DrawOrder[i].Object.Y);
                     // newTxt.setSize(width,hight);
-                    newTxt.fontSize = param.DrawOrder[i].Object.FontSize;
+                    // newTxt.fontSize = param.DrawOrder[i].Object.FontSize;
                     newTxt.setPosition(posX,posY);
+                    let _txt:string = param.DrawOrder[i].Object.Text;
+                    let strArr = _txt.split('+');
+                    newTxt.setPivot(0.5,0.5);
+                    if(strArr[1]){
+                        newTxt.ubbEnabled = true;
+                    }
+                    else{
+                        newTxt.ubbEnabled = false;
+                    }
                     if(param.DrawOrder[i].Object.IsSelf == 1){
-                        newTxt.text = ConfigMgr.GetInstance().GetRecordInput();
+                        if(strArr[1]){
+                            newTxt.text = ConfigMgr.GetInstance().GetRecordInput();
+                            newTxt.color = cc.color(parseInt(strArr[1]),parseInt(strArr[2]),parseInt(strArr[3]))
+                        }
+                        else{
+                            newTxt.text = ConfigMgr.GetInstance().GetRecordInput();
+                        }
                     }
                     else if(param.DrawOrder[i].Object.IsSelf == 2){
-                        newTxt.setPivot(0.5,0.5);
                         newTxt.text = ConfigMgr.GetInstance().GetRecordInput() + " " + param.DrawOrder[i].Object.Text;
                     }
                     else{
-                        newTxt.text = param.DrawOrder[i].Object.Text;
+                        if(strArr[1]){
+                            newTxt.text = strArr[0];
+                            newTxt.color = cc.color(parseInt(strArr[1]),parseInt(strArr[2]),parseInt(strArr[3]))
+                        }
+                        else{
+                            newTxt.text = param.DrawOrder[i].Object.Text;
+                        }
                     }
                     newTxt.fontSize = parseFloat(param.DrawOrder[i].Object.FontSize);
                 }

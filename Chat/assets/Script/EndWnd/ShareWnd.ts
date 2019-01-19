@@ -1,114 +1,229 @@
 import BaseWindow from '../Base/BaseWindow'
 import WindowManager from '../Base/WindowManager';
-import EventManager from '../Base/EventManager';
-import { EventEnum } from '../Base/EventEnum';
-import Tools from '../Base/Tools';
-import FaceBookSDK from '../Base/FaceBookSDK';
+import SharePrefab from './SharePrefab';
+import ViewBtn from '../ChooseWin/ViewBtn';
 import SDKManager from '../Base/SDKManager';
+import MessageManager from '../Base/MessageManager';
 import DelayTimeManager from '../Base/DelayTimeManager';
+import ScrollPaneUp from '../ChooseWin/ScrollPaneUp';
+import ChatWnd from '../ChatWin/ChatWnd';
 
 export default class ShareWnd extends BaseWindow{
     private _returnBgBtn:fgui.GLoader;
-    private _againBtn:fgui.GLoader;
-    private _shareBtn:fgui.GLoader;
-    private _sprite:fgui.GLoader;
     private _view:fgui.GComponent;
+    private _list:fgui.GList;
+    private _sharePrefab:SharePrefab;
+    private _paramData:any;
+    private _recordLastNum:number = 0;
 
-    //记录Tex
-    private _Tex:cc.RenderTexture = null;
 
-    //记录初始值
-    private _recordX:number = -1;
-    private _recordY:number = -1;
+    private _data:any = [];
+    private _isCanClick:boolean = true;
+    private _ID:number = 2;
+    private _IsInitList:boolean = false;
+    private _InPullRefresh:boolean = false;
+    private _nowClickItem:ViewBtn;
+
 
     OnLoadToExtension(){
-
+        
     }
 
     OnCreate(){
         this._view = this.GetView();
-        this._returnBgBtn = this._view.getChild("n1").asLoader;
-        this._againBtn = this._view.getChild("n3").asLoader;
-        this._shareBtn = this._view.getChild("n2").asLoader;
-        this._sprite = this._view.getChild("n0").asLoader;
+        this._returnBgBtn = this._view.getChild("n8").asLoader;
         this._returnBgBtn.onClick(this.CloseSelf,this);
-        this._againBtn.onClick(this.AgainTest,this);
-        this._shareBtn.onClick(this.ShareThisSprite,this);
+        this._list = this._view.getChild("n10").asList;
+        this._list.itemProvider = this.ReturnPrefabUrl.bind(this);
+        this._list.itemRenderer = this.RenderListView.bind(this); 
+        this._list.on(fgui.Event.CLICK_ITEM,this.OnItemClickCall,this);
+        this._list.on(fgui.Event.PULL_UP_RELEASE,this.OnPullUpToRefresh,this);
+
         // this._view.onClick(this.ShareThisSprite,this);
     }
-
+    
     OnOpen(param:any){
-        if(param){
-            this._Tex = param.Tex;
-            // this._sprite.url = "https://cutepard.com/quce_server/static/soul/llo.png";
-            this.SetShowIcon(param.Tex,param.Height,param.Width);
+        this._InPullRefresh = false;
+        this._paramData = param;
+        // this._list.scrollPane.scrollTop(true);
+        if(!this._IsInitList){
+            this._IsInitList = true;
+            this._list.numItems = 1;
+            this._recordLastNum = this._list.numItems;
+            this.ReqDataInId();
         }
         else{
-            console.log("传入数据为空！");
+            this._sharePrefab.SetCategoryID(this._paramData.CategoryContentID);
+            this._sharePrefab.SetWndObj(this);
+            this._sharePrefab.SetShowIcon(this._paramData.Tex,this._paramData.Height,this._paramData.Width);
+            this._recordLastNum = this._list.numItems;
         }
-
+        this._list.scrollToView(0);
     }
     
     OnClose(){
-        this._sprite.texture = null;
+        this._sharePrefab.Close();
     }
 
-    //计算出合适的宽高并返回
-    public CountSuitableSize(_width:number,_height:number):cc.Vec2{
-        let maxWidth = 645;
-        let maxHeight = 860;
+    //渲染list
+    public RenderListView(idx:number,obj:fgui.GObject):void{
+        if(idx < this._recordLastNum){
+            return;
+        }
+        if(idx == 0){
+            let prefab:SharePrefab = obj as SharePrefab;
+            this._sharePrefab = prefab;
+            prefab.SetWndObj(this);
+            prefab.SetShowIcon(this._paramData.Tex,this._paramData.Height,this._paramData.Width);
+            prefab.SetCategoryID(this._paramData.CategoryContentID);
+        }
+        else{
+            let item:ViewBtn = <ViewBtn>obj;
+            item.SetNumTxt(this._data[idx-1].ClickCount);
+            item.SetImage(this._data[idx-1].ImgURL);
+            item.SetUUID(this._data[idx-1].ID);
+            item.SetStartNum(this._data[idx-1].StartOrder);
+            item.SetChatType(this._data[idx-1].ShowMethod);
+            item.SetFullScreenBgImgUrl(this._data[idx-1].BgImageURL);
+            item.SetAudioUrl(this._data[idx-1].BgAudioURL);
+            item.SetTitleTxt(this._data[idx-1].ViewTitle);
+            item.SetQuestionTxt(this._data[idx-1].Title);
+            item.SetLeftRightTag(this._data[idx-1].TitleContegoryID);
+        }
+    }
 
-        let newSize = new cc.Vec2(0,0);
-        for(let i = 525;i <= maxWidth;i++){
-            newSize.x = i;
-            newSize.y = (newSize.x/_width)*_height;
-            if(newSize.y <= maxHeight){
-                break;
+    //返回prefab
+    public ReturnPrefabUrl(idx:number):string{
+        if(idx == 0){
+            return "ui://EndWnd/ShareCom";
+        }
+        else{
+            return "ui://EndWnd/viewBtn"
+        }
+    }
+
+    //根据ID向服务器请求相应的数据
+    public ReqDataInId():void{
+        if(this._InPullRefresh){
+            let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
+            footer.SetRefreshState(2);
+            this._list.scrollPane.lockFooter(75);
+        }
+        let reqData:object = {};
+        reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
+        reqData["CategoryID"] = this._ID;
+        reqData["Offset"] = this._list.numItems - 1;
+        let url = "/quce_server/user/GetCategoryContent";
+        MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqListDataSuccess,this.ReqListDataDef);
+    }
+
+    //重置下拉刷新组件
+    private ResetRefreshCom():void{
+        let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
+        footer.SetRefreshState(0);
+        this._list.scrollPane.lockFooter(0);
+    }
+
+    //请求列表数据成功
+    public ReqListDataSuccess(param:any):void{
+        this._IsInitList = true;
+        let data = param.data.CategoryContentInfo;
+        // console.log("请求列表数据",data);
+        if(data != null){
+            if(this._InPullRefresh){
+                this._InPullRefresh = false;
+                let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
+                footer.SetRefreshState(3);
+                this._list.scrollPane.lockFooter(75);
+                DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
+            }
+            this._data = this._data.concat(data);
+            this._recordLastNum = this._list.numItems;
+            this._list.numItems += data.length;
+            this._list.ensureBoundsCorrect();
+        }
+        else{
+            if(this._InPullRefresh){
+                this._InPullRefresh = false;
+                let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
+                footer.SetRefreshState(4);
+                this._list.scrollPane.lockFooter(75);
+                DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
             }
         }
-        return newSize;
+        
     }
 
-    //加载图片到loader上
-    public SetShowIcon(_tex: cc.RenderTexture, _height: number, _width: number): void {
-        this._sprite.texture = new cc.SpriteFrame(_tex);
-        this._sprite.setPivot(0.5,0.5);
-        this._sprite.setScale(-1,1);
-        let size:cc.Vec2 = this.CountSuitableSize(_width,_height);
-        this._sprite.setSize(size.x,size.y);
-        console.log("====>",size);
-        console.log("->",this._view.width,this._view.height)
-        if(this._recordX == -1){
-            this._recordX = this._view.width/2 - size.x/2;
-            this._recordY = this._view.height/2 - size.y/2 - 100;
+    //请求列表数据失败
+    public ReqListDataDef():void{
+        if(this._InPullRefresh){
+            this._InPullRefresh = false;
+            let footer:ScrollPaneUp = this._list.scrollPane.footer as ScrollPaneUp;
+            footer.SetRefreshState(4);
+            this._list.scrollPane.lockFooter(75);
+            DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
         }
-        this._sprite.rotation = 180;
-        this._sprite.setPosition(this._recordX,this._recordY);
     }
 
+    public OnItemClickCall(item:fgui.GObject):void{
+        let idx = this._list.getChildIndex(item);
+        if(idx == 0){
+            return;
+        }
+        let itemObj:ViewBtn = <ViewBtn>item;
+        if(this._isCanClick){
+            this._isCanClick = false;
+            this._nowClickItem = itemObj;
+            //向服务器请求增加点击条目
+            let reqData:object = {};
+            reqData["ID"] = itemObj.GetUUID();
+            reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
+            let url = "/quce_server/user/ClickCategoryContent";
+            MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqClickAddNumSuccess,this.ReqClickAddNumDef);
+        }
+    }
+
+    //请求点击量增加成功
+    public ReqClickAddNumSuccess(param:any):void{
+        let data = param.data;
+        let addNum:number = parseInt(data.AddNum);
+        this._nowClickItem.AddNumTxt(addNum);
+        this._isCanClick = true;        
+
+        let openData:object = {};
+        openData["NextOrder"] = this._nowClickItem.GetStartNum();
+        openData["CategoryContentID"] = this._nowClickItem.GetUUID();
+        openData["ShowMethod"] = this._nowClickItem.GetChatType();
+        openData["BgImageURL"] = this._nowClickItem.GetFullScreenBgImgUrl();
+        openData["BgAudioURL"] = this._nowClickItem.GetAudioUrl();
+        openData["Title"] = this._nowClickItem.GetQuestionTxt();
+        this.CloseSelf();
+        //打开聊天界面
+        WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData);
+
+    }
+
+    //请求点击量增加失败
+    public ReqClickAddNumDef():void{
+        this._isCanClick = true;
+    }
+
+    private OnPullUpToRefresh():void{
+        let footer:ScrollPaneUp = <ScrollPaneUp>this._list.scrollPane.footer;
+        if(footer.ReadyToRefresh()){
+            footer.SetRefreshState(2);
+            this._list.scrollPane.lockFooter(75);
+            this._InPullRefresh = true;            
+            //向服务器请求数据
+            this.ReqDataInId();
+        }
+    }
 
     //关闭界面
     public CloseSelf():void{
-        this._sprite.texture = null;
-        // this._sprite.setPivot(0.5,0.5);
-        // this._sprite.setScale(1,1);
-        // this._sprite.rotation = 0;
-        this._recordX = -1;
-        this._recordY = -1;
+        this._sharePrefab.Close();
         WindowManager.GetInstance().CloseWindow<ShareWnd>("ShareWnd",this,ShareWnd);
-    }
-
-    //再测一次
-    public AgainTest():void{
-        this.CloseSelf();
-        EventManager.DispatchEvent(EventEnum.ReqAgainTest);
-    }
-
-    //分享图片
-    public ShareThisSprite():void{
-        let base64 = Tools.GetBase64ByTexture(this._Tex);
-        // console.log(base64);
-        SDKManager.GetInstance().SendMessageToFrends(base64);
-        // SDKManager.GetInstance().StartShareCall(base64,"",()=>{console.log("分享结束")},this);
+        // WindowManager.GetInstance().CloseWindow<ChatWnd>("ChatWnd",this,ChatWnd);
+        WindowManager.GetInstance().CloseNameWindow<ChatWnd>("ChatWnd",ChatWnd);
     }
 }

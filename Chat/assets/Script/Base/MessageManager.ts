@@ -1,4 +1,7 @@
 import ConfigMgr from './ConfigMgr';
+import EventManager from './EventManager';
+import { EventEnum } from './EventEnum';
+import DelayTimeManager from './DelayTimeManager';
 export default class MessageManager{
     private static _instance:MessageManager;
 
@@ -30,6 +33,11 @@ export default class MessageManager{
                             defCall.call(callObj);
                         }
                         else{
+                            // DelayTimeManager.AddDelayOnce(2,()=>{
+                            //     EventManager.DispatchEvent(EventEnum.WaitModelOver);
+                            //     callback.call(callObj,reponseJson);
+                            // },this);
+                            // EventManager.DispatchEvent(EventEnum.WaitModelOver);
                             callback.call(callObj,reponseJson);
                         }
                     }

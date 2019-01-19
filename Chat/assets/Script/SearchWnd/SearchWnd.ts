@@ -11,6 +11,7 @@ import SDKManager from '../Base/SDKManager';
 export default class SearchWnd extends BaseWindow{
     private _view:fgui.GComponent;
     private _closeBtn:fgui.GLoader;
+    private _closeBtn2:fgui.GLoader;
     private _searchBtn:fgui.GLoader;
     private _inputTxt:fgui.GTextInput;
     private _list:fgui.GList;
@@ -19,18 +20,20 @@ export default class SearchWnd extends BaseWindow{
     private _recordTxt:string;
 
     OnLoadToExtension(){
-        fgui.UIObjectFactory.setExtension("ui://SearchWnd/SearchBtn",SearchBtn);
+        
     }
 
     OnCreate(){
         this._view = this.GetView();
         this._closeBtn = this._view.getChild("n18").asLoader;
+        this._closeBtn2 = this._view.getChild("n21").asLoader;
         this._searchBtn = this._view.getChild("n16").asLoader;
         this._inputTxt = this._view.getChild("n17").asTextInput;
         this._list = this._view.getChild("n15").asList;
 
 
         this._closeBtn.onClick(this.ClickCloseCall,this);
+        this._closeBtn2.onClick(this.ClickCloseCall,this);
         this._searchBtn.onClick(this.CliclSearchBtnCall,this);
         this._inputTxt.on(fgui.Event.TEXT_CHANGE,this.RecordPlayerInput,this);
         this._inputTxt.on(fgui.Event.Submit,this.CliclSearchBtnCall,this);

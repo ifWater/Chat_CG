@@ -10,7 +10,13 @@ export default class ViewBtn extends fgui.GButton{
     private _chatType:number;
     private _bgImageUrl:string;
     private _bgAudio:string;
+    private _titleTxt:fgui.GTextField;
 
+    private _hot:fgui.GGroup;
+    private _new:fgui.GGroup;
+
+    //记录问题的文本
+    private _questionTxt:string;
     public constructor(){
         super();
     }
@@ -18,6 +24,9 @@ export default class ViewBtn extends fgui.GButton{
     protected onConstruct():void{
         this._numTxt = this.getChild("n4").asTextField;
         this._sprite = this.getChild("n0").asLoader;
+        this._titleTxt = this.getChild("n6").asTextField;
+        this._hot = this.getChild("n12").asGroup;
+        this._new = this.getChild("n9").asGroup;
     }
 
     public SetNumTxt(txt:string):void{
@@ -28,6 +37,24 @@ export default class ViewBtn extends fgui.GButton{
     public AddNumTxt(num:number):void{
         this._lastNum = this._lastNum + num
         this._numTxt.text = this.CountValue(this._lastNum);
+    }
+
+    public SetLeftRightTag(tag:number):void{
+        //默认
+        if(tag == 0){
+            this._hot.visible = false;
+            this._new.visible = false;
+        }
+        //new
+        else if(tag == 1){
+            this._hot.visible = false;
+            this._new.visible = true;
+        }
+        //hot
+        else if(tag == 2){
+            this._hot.visible = true;
+            this._new.visible = false;
+        }
     }
 
     private CountValue(num:number):string{
@@ -58,9 +85,9 @@ export default class ViewBtn extends fgui.GButton{
     }
 
     public SetImage(url:string):void{
+        this._sprite.texture = null;
         // console.log(ConfigMgr.ServerIP + url)
         Tools.ChangeURL(ConfigMgr.ServerIP + url,this._sprite);
-
         // this._sprite.url = ConfigMgr.ServerIP + url;
     }
 
@@ -109,5 +136,21 @@ export default class ViewBtn extends fgui.GButton{
     //获取背景音乐的地址
     public GetAudioUrl():string{
         return this._bgAudio;
+    }
+
+    //设置封面的标题
+    public SetTitleTxt(str:string):void{
+        this._titleTxt.text = str;
+    }
+
+
+    //设置问题的文本
+    public SetQuestionTxt(str:string):void{
+        this._questionTxt = str;
+    }
+
+    //获取封面的标题
+    public GetQuestionTxt():string{
+        return this._questionTxt;
     }
 }

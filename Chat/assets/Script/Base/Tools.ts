@@ -159,7 +159,7 @@ export default class Tools{
         return canvas.toDataURL("image/jpeg");
     }
 
-    //文字弹窗
+    //原生平台文字弹窗
     public static OpenWordTips(obj:cc.Node):void{
         if(obj.active){
             return;
@@ -175,6 +175,21 @@ export default class Tools{
         let Act = cc.sequence(reset,show,move,hide,reset,finished);
         obj.runAction(Act);
     }
+
+    //FairyGui文字弹窗
+    private static _recordNode:cc.Node;
+    public static WordTips(str:string):void{
+        let tips:fgui.GTextField = new fgui.GTextField();
+        let _width = fgui.GRoot.inst.width;
+        let _height = fgui.GRoot.inst.height;
+        tips.setPosition(_width/2,_height/2);
+        tips.autoSize = 3;
+        tips.text = str;
+        tips.fontSize = 30;
+        
+    }
+
+
     //根据url创建图片(canvas原生创建)并加载到对应的组件上面
     public static CreateImage(spriteCom:cc.Sprite,url:string):void{
         let image = new Image();
