@@ -22,6 +22,8 @@ import SharePrefab from '../EndWnd/SharePrefab';
 import SearchBtn from '../SearchWnd/SearchBtn';
 import ChooseBoxPrefab from '../ChatWin/ChooseBoxPrefab';
 import FSChooseBoxPrefab from '../ChatWin/FSChooseBoxPrefab';
+import SDKManager from './SDKManager';
+import OMG_ShareCom from '../ChatWin/OMG_ShareCom';
 
 const {ccclass, property} = cc._decorator;
 
@@ -82,11 +84,14 @@ export default class MainUI extends cc.Component {
         fgui.UIObjectFactory.setExtension("ui://SearchWnd/SearchBtn",SearchBtn);
         fgui.UIObjectFactory.setExtension("ui://Chat/ChooseBox",ChooseBoxPrefab);
         fgui.UIObjectFactory.setExtension("ui://Chat/FSChooseBoxPrefab",FSChooseBoxPrefab);
+        fgui.UIObjectFactory.setExtension("ui://Chat/OMG_ShareCom",OMG_ShareCom);
+        fgui.UIObjectFactory.setExtension("ui://Chat/viewBtnNew",ViewBtn);
     }
     
     start () {
         // WindowManager.GetInstance().OpenWindow<WaitWnd>("StartWnd","WaitMsgWnd",WaitWnd);
         WindowManager.GetInstance().OpenWindow<StartWnd>("StartWnd","WaitWnd",StartWnd);
+        console.log("分享数据",SDKManager.GetInstance().GetShareLoadData());
     }
 
     update(dt) {

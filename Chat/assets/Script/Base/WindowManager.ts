@@ -190,4 +190,11 @@ export default class WindowManager{
         this._loadAllPackage.push(name);
         this._OpenWindow<T>(name,windowName,T,param,WndType);
     }
+
+    //提前加载UI包
+    public LoadUIPackage(_name:string):void{
+        fgui.UIPackage.loadPackage("FairyGui/"+_name,()=>{
+            this._loadAllPackage.push(_name);
+        });
+    }
 }

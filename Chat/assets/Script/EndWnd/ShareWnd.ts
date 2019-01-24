@@ -7,6 +7,10 @@ import MessageManager from '../Base/MessageManager';
 import DelayTimeManager from '../Base/DelayTimeManager';
 import ScrollPaneUp from '../ChooseWin/ScrollPaneUp';
 import ChatWnd from '../ChatWin/ChatWnd';
+import ConfigMgr from '../Base/ConfigMgr';
+import StartWnd from '../StartWnd/StartWnd';
+import EventManager from '../Base/EventManager';
+import { EventEnum } from '../Base/EventEnum';
 
 export default class ShareWnd extends BaseWindow{
     private _returnBgBtn:fgui.GLoader;
@@ -19,14 +23,14 @@ export default class ShareWnd extends BaseWindow{
 
     private _data:any = [];
     private _isCanClick:boolean = true;
-    private _ID:number = 2;
+    private _ID:number = 1;
     private _IsInitList:boolean = false;
     private _InPullRefresh:boolean = false;
     private _nowClickItem:ViewBtn;
 
 
     OnLoadToExtension(){
-        
+        this.SetWndLayer(1);
     }
 
     OnCreate(){
@@ -113,7 +117,13 @@ export default class ShareWnd extends BaseWindow{
         reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
         reqData["CategoryID"] = this._ID;
         reqData["Offset"] = this._list.numItems - 1;
-        let url = "/quce_server/user/GetCategoryContent";
+        let url = "";
+        if(ConfigMgr.IsTest){
+            url = "/quce_test_server/user/GetCategoryContent";
+        }
+        else{
+            url = "/quce_server/user/GetCategoryContent";
+        }
         MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqListDataSuccess,this.ReqListDataDef);
     }
 
@@ -178,7 +188,13 @@ export default class ShareWnd extends BaseWindow{
             let reqData:object = {};
             reqData["ID"] = itemObj.GetUUID();
             reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
-            let url = "/quce_server/user/ClickCategoryContent";
+            let url = "";
+            if(ConfigMgr.IsTest){
+                url = "/quce_test_server/user/ClickCategoryContent";
+            }
+            else{
+                url = "/quce_server/user/ClickCategoryContent";
+            }
             MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqClickAddNumSuccess,this.ReqClickAddNumDef);
         }
     }
@@ -197,6 +213,9 @@ export default class ShareWnd extends BaseWindow{
         openData["BgImageURL"] = this._nowClickItem.GetFullScreenBgImgUrl();
         openData["BgAudioURL"] = this._nowClickItem.GetAudioUrl();
         openData["Title"] = this._nowClickItem.GetQuestionTxt();
+        //设置分享数据
+        let _idx = this._list.getChildIndex(this._nowClickItem);
+        SDKManager.GetInstance().SetShareData(this._data[_idx-1]);
         this.CloseSelf();
         //打开聊天界面
         WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData);
@@ -221,6 +240,11 @@ export default class ShareWnd extends BaseWindow{
 
     //关闭界面
     public CloseSelf():void{
+        console.log("是否是跳转",StartWnd._IsJumpToShareWnd);
+        if(StartWnd._IsJumpToShareWnd){
+            StartWnd._IsJumpToShareWnd = false;
+            EventManager.DispatchEvent(EventEnum.ReqJoinToChooseWnd);
+        }
         this._sharePrefab.Close();
         WindowManager.GetInstance().CloseWindow<ShareWnd>("ShareWnd",this,ShareWnd);
         // WindowManager.GetInstance().CloseWindow<ChatWnd>("ChatWnd",this,ChatWnd);

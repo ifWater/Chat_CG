@@ -5,6 +5,7 @@ import ScrollPaneUp from './ScrollPaneUp';
 import MessageManager from '../Base/MessageManager';
 import DelayTimeManager from '../Base/DelayTimeManager';
 import SDKManager from '../Base/SDKManager';
+import ConfigMgr from '../Base/ConfigMgr';
 export default class ViewList extends fgui.GList{
     private _list:fgui.GList;
     private _data:any = [];
@@ -35,6 +36,10 @@ export default class ViewList extends fgui.GList{
         this.height = _height;
         // console.log("---->",_width,_height);
     }
+
+    public SetIsCanClick(_isCan:boolean):void{
+        this._isCanClick = _isCan;
+    }
     
     //根据ID向服务器请求相应的数据
     public ReqDataInId():void{
@@ -47,7 +52,13 @@ export default class ViewList extends fgui.GList{
         reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
         reqData["CategoryID"] = this._ID;
         reqData["Offset"] = this._list.numItems;
-        let url = "/quce_server/user/GetCategoryContent";
+        let url = "";
+        if(ConfigMgr.IsTest){
+            url = "/quce_test_server/user/GetCategoryContent";
+        }
+        else{
+            url = "/quce_server/user/GetCategoryContent";
+        }
         MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqListDataSuccess,this.ReqListDataDef);
     }
 
@@ -138,7 +149,13 @@ export default class ViewList extends fgui.GList{
             let reqData:object = {};
             reqData["ID"] = itemObj.GetUUID();
             reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
-            let url = "/quce_server/user/ClickCategoryContent";
+            let url = "";
+            if(ConfigMgr.IsTest){
+                url = "/quce_test_server/user/ClickCategoryContent";
+            }
+            else{
+                url = "/quce_server/user/ClickCategoryContent";
+            }
             MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqClickAddNumSuccess,this.ReqClickAddNumDef);
         }
     }
@@ -147,9 +164,7 @@ export default class ViewList extends fgui.GList{
     public ReqClickAddNumSuccess(param:any):void{
         let data = param.data;
         let addNum:number = parseInt(data.AddNum);
-        this._nowClickItem.AddNumTxt(addNum);
-        this._isCanClick = true;        
-
+        this._nowClickItem.AddNumTxt(addNum);   
         let openData:object = {};
         openData["NextOrder"] = this._nowClickItem.GetStartNum();
         openData["CategoryContentID"] = this._nowClickItem.GetUUID();
@@ -158,9 +173,12 @@ export default class ViewList extends fgui.GList{
         openData["BgAudioURL"] = this._nowClickItem.GetAudioUrl();
         openData["ViewTitle"] = this._nowClickItem.GetQuestionTxt();
         openData["Title"] = this._nowClickItem.GetQuestionTxt();
+        //设置分享数据
+        let _idx = this._list.getChildIndex(this._nowClickItem);
+        SDKManager.GetInstance().SetShareData(this._data[_idx]);
         //打开聊天界面
         WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData);
-
+        this._isCanClick = true;
     }
 
     //请求点击量增加失败

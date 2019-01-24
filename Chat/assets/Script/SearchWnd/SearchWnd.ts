@@ -7,6 +7,7 @@ import EventManager from '../Base/EventManager';
 import{EventEnum,EventDataOne} from '../Base/EventEnum';
 import SearchEndWnd from './SearchEndWnd';
 import SDKManager from '../Base/SDKManager';
+import ConfigMgr from '../Base/ConfigMgr';
 
 export default class SearchWnd extends BaseWindow{
     private _view:fgui.GComponent;
@@ -18,6 +19,9 @@ export default class SearchWnd extends BaseWindow{
 
     private _hotData:Array<string>;
     private _recordTxt:string;
+
+    private _isCanReturn:boolean = true;
+    private _isCanSearch:boolean = true;
 
     OnLoadToExtension(){
         
@@ -44,7 +48,13 @@ export default class SearchWnd extends BaseWindow{
         //向服务器请求火爆的搜索数据
         let reqData:object  = {};
         reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
-        let url = "/quce_server/user/GetHotSearchRecommend";
+        let url = "";
+        if(ConfigMgr.IsTest){
+            url = "/quce_test_server/user/GetHotSearchRecommend";
+        }
+        else{
+            url = "/quce_server/user/GetHotSearchRecommend";
+        }
         MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqHotSuccesss,this.ReqHotDef);
         EventManager.AddEventListener(EventEnum.ClickHotSearch,this.ClickHotCall,this);
     }
@@ -81,12 +91,20 @@ export default class SearchWnd extends BaseWindow{
 
     //点击关闭回到选择界面
     public ClickCloseCall():void{
-        WindowManager.GetInstance().CloseWindow<SearchWnd>("SearchWnd",this,SearchWnd);
+        if(this._isCanReturn){
+            this._isCanReturn = false;
+            WindowManager.GetInstance().CloseWindow<SearchWnd>("SearchWnd",this,SearchWnd);
+            this._isCanReturn = true;
+        }
     }
 
     //点击搜索按钮向服务器发送消息
     public CliclSearchBtnCall():void{
-        WindowManager.GetInstance().OpenWindow<SearchEndWnd>("Package1","SearchEndWnd",SearchEndWnd,this._recordTxt,1);
+        if(this._isCanSearch){
+            this._isCanSearch = false;
+            WindowManager.GetInstance().OpenWindow<SearchEndWnd>("Package1","SearchEndWnd",SearchEndWnd,this._recordTxt,1);
+            this._isCanSearch = true;
+        }
 
     }
 

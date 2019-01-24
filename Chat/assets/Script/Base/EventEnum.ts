@@ -12,6 +12,7 @@ enum EventEnum{
     "ReqNextData",          //请求下一条题目
     "FSInputTo",            //全屏模式下玩家进行输入操作
     "OpenChooseBox",        //弹出选项列表
+    "ReqJoinToChooseWnd",  //请求进入选择界面（分享进入方式）
 }
 
 interface EventFunc{

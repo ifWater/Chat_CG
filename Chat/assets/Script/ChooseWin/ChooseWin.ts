@@ -7,6 +7,8 @@ import WindowManager from '../Base/WindowManager';
 import SearchWnd from '../SearchWnd/SearchWnd';
 import FaceBookSDK from '../Base/FaceBookSDK';
 import SDKManager from '../Base/SDKManager';
+import MessageManager from '../Base/MessageManager';
+import ChatWnd from '../ChatWin/ChatWnd';
 
 export default class ChooseWin extends BaseWindow{
     private _view:fgui.GComponent;
@@ -16,6 +18,9 @@ export default class ChooseWin extends BaseWindow{
     private _data:any;
     private _searchBtn:fgui.GLoader;
     private _headIcon:fgui.GLoader;
+    private _isCanClick:boolean = true;
+
+
 
     OnLoadToExtension(){
         
@@ -29,14 +34,12 @@ export default class ChooseWin extends BaseWindow{
 
         this._list = this._view.getChild("n0").asList;
         this._list.itemRenderer = this.RenderListPackge.bind(this);
-
         this._listTitle = this._view.getChild("n8").asList;
         this._listTitle.itemRenderer = this.RenderListTitle.bind(this);
-
+        this._list.scrollPane.mouseWheelEnabled = false;
         this._searchBtn = this._view.getChild("n13").asLoader;
         this._headIcon = this._view.getChild("n19").asCom.getChild("n0").asLoader;
 
-        
         this._searchBtn.onClick(this.ClickSearchCall,this);
 
         this._listTitle.on(fgui.Event.CLICK_ITEM,this.OnItemClickCall,this)
@@ -47,16 +50,20 @@ export default class ChooseWin extends BaseWindow{
             this.InitHeadIcon();
             this.InitList(param);
         }
-        console.log(this._list.height)
-    }
+     }
     
     OnClose(){
         
     }
 
+
     //点击搜索区域,,跳转窗口
     public ClickSearchCall():void{
-        WindowManager.GetInstance().OpenWindow<SearchWnd>("SearchWnd","SearchWnd",SearchWnd);
+        if(this._isCanClick){
+            this._isCanClick = false;
+            WindowManager.GetInstance().OpenWindow<SearchWnd>("SearchWnd","SearchWnd",SearchWnd);
+            this._isCanClick = true;
+        }
     }
 
     //初始化列表

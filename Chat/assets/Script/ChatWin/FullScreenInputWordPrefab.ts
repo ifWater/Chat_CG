@@ -13,7 +13,7 @@ export default class FullScreenInputWordPrefab extends fgui.GComponent{
     // private _txtBg:fgui.GImage;
     private _txt:fgui.GTextField;
 
-    private _titleTxt:fgui.GTextField;
+    private _titleTxt:fgui.GRichTextField;
 
     //记录将要输出的文本
     private _recordWillSendTxt:string;
@@ -27,7 +27,7 @@ export default class FullScreenInputWordPrefab extends fgui.GComponent{
         this._FullInputTxt = this.getChild("n3").asTextInput;
         this._FullSendBtn = this.getChild("n4").asLoader;
         this._Eff = this.getTransition("t0");
-        this._titleTxt = this.getChild("n11").asTextField;
+        this._titleTxt = this.getChild("n11").asRichTextField;
         // this._txtLast = this.getChild("n8").asTextField;
         // this._txtBg = this.getChild("n2").asImage;
         this._txt = this.getChild("n10").asTextField;

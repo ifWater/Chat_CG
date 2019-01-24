@@ -1,13 +1,13 @@
 
 export default class ChoosePrefab extends fgui.GButton{
-    private _nameTxt:fgui.GTextField;
+    private _nameTxt:fgui.GRichTextField;
     private _chooseSpr:fgui.GImage;
     public constructor(){
         super();
     }
 
     protected onConstruct():void{
-        this._nameTxt = this.getChild("n3").asTextField;
+        this._nameTxt = this.getChild("n3").asRichTextField;
         this._chooseSpr = this.getChild("n5").asImage;    
     }
 

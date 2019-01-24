@@ -1,5 +1,10 @@
 import ConfigMgr from "./ConfigMgr";
 
+enum ShareType{
+    Friends,
+    Space,
+}
+
 //FaceBook 接口类
 export default class FaceBookSDK{
     private FBInstant:any = window["FBInstant"];
@@ -7,6 +12,7 @@ export default class FaceBookSDK{
     private _playerIcon:string;
     private _playerId:string;
     private _platform:string;
+    private _recordShareData:any = null;
     private static _instance:FaceBookSDK;
     //获取玩家名字
     public GetPlayerName():string{
@@ -22,7 +28,10 @@ export default class FaceBookSDK{
         return this._instance;
     }
     //无成功回调分享
-    public Share(imgBase64:string,titleTxt:string,callBack:Function,callObj:any){
+    public Share(imgBase64:string,titleTxt:string,callBack:Function,callObj:any,_data?:any){
+        if(_data){
+            _data["ShareType"] = ShareType.Space;
+        }
         console.log("进入分享接口")
         if(CC_DEBUG){
             console.log(imgBase64);
@@ -30,13 +39,17 @@ export default class FaceBookSDK{
         this.FBInstant.shareAsync({
             intent:'SHARE',
             image:imgBase64,
-            text:titleTxt
+            text:titleTxt,
+            data:_data,
         }).then(()=>{
             callBack.call(callObj);
         })
     }
     //给好友发送消息
-    public SendMessageToFriends(baseImg:string,titleTxt:string):void{
+    public SendMessageToFriends(baseImg:string,titleTxt:string,_data?:any):void{
+        if(_data){
+            _data["ShareType"] = ShareType.Friends;
+        }
         this.FBInstant.context.chooseAsync().then(()=>{
             this.FBInstant.updateAsync({
                 action: 'CUSTOM',
@@ -44,7 +57,7 @@ export default class FaceBookSDK{
                 image: baseImg,
                 text: titleTxt,
                 template: 'VILLAGE_INVASION',
-                data: { myReplayData: '...' },
+                data: _data,
                 strategy: 'IMMEDIATE',
                 notification: 'NO_PUSH',
               }).then(function() {
@@ -108,5 +121,13 @@ export default class FaceBookSDK{
         }).catch(function(err){
             console.log("广告播放失败！",err);
         })
+    }
+
+    //获取分享时附带的数据
+    public GetShareLoadData():void{
+        if(this._recordShareData == null){
+            this._recordShareData = this.FBInstant.getEntryPointData();
+        }
+        return this._recordShareData;
     }
 }

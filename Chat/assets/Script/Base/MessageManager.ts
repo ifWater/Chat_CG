@@ -13,7 +13,7 @@ export default class MessageManager{
     }
 
     public SendMessage(reqData:any,url:string,callObj:object,callback:Function,defCall?:Function){
-        if(CC_DEBUG){
+        if(CC_DEBUG||ConfigMgr.IsTest){
             console.log("开始请求数据！",reqData,url);
         }
         let param:string = JSON.stringify(reqData);
@@ -25,7 +25,7 @@ export default class MessageManager{
                     let reponse = xhr.responseText;
                     if(reponse){
                         let reponseJson = JSON.parse(reponse);
-                        if(CC_DEBUG){
+                        if(CC_DEBUG||ConfigMgr.IsTest){
                             console.log("收到数据:",reponseJson);
                         }
                         if(reponseJson.code != 20000){

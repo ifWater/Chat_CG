@@ -19,8 +19,9 @@ export default class ConfigMgr{
     private readonly configMap:string[] = ["fraction","price"];              //配置表名
     private readonly ID:string = "ID";
     //-----------------------网络地址------------------------------------
-    public static readonly ServerIP:string = "http://10.0.0.13:12345";
-    // public static readonly ServerIP:string = "https://cutepard.com";
+    // public static readonly ServerIP:string = "http://10.0.0.13:12345";
+    public static readonly ServerIP:string = "https://cutepard.com";
+    public static readonly IsTest:boolean = false;
     //---------------------------------------------------------
     private _loadFileTag:boolean[] = [];
     private static _instance:ConfigMgr;

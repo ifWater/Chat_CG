@@ -6,7 +6,7 @@ export default class FSChooseBoxPrefab extends fgui.GComponent{
     private _chooseTxt:fgui.GTextField;
     private _chooseBtn:fgui.GLoader;
     private _SendBtn:fgui.GLoader;
-    private _titleTxt:fgui.GTextField;
+    private _titleTxt:fgui.GRichTextField;
 
 
     //记录显示在按钮上面的文本
@@ -31,7 +31,7 @@ export default class FSChooseBoxPrefab extends fgui.GComponent{
         this._chooseTxt = this.getChild("n15").asTextField;
         this._chooseBtn = this.getChild("n13").asLoader;
         this._SendBtn = this.getChild("n4").asLoader;
-        this._titleTxt = this.getChild("n16").asTextField;
+        this._titleTxt = this.getChild("n16").asRichTextField;
         this._chooseBtn.onClick(this.ClickChooseBtnCall,this);
         this._SendBtn.onClick(this.SendTxtCall,this);
     }

@@ -23,6 +23,10 @@ import FullScreenInputWordPrefab from './FullScreenInputWordPrefab';
 import DelayTimeManager from '../Base/DelayTimeManager';
 import FSChooseBoxPrefab from './FSChooseBoxPrefab';
 import ChooseBoxPrefab from './ChooseBoxPrefab';
+import StartWnd from '../StartWnd/StartWnd';
+import ViewBtn from '../ChooseWin/ViewBtn';
+import OMG_ShareCom from './OMG_ShareCom';
+import ScrollPaneUp from '../ChooseWin/ScrollPaneUp';
 
 interface MessageType{
     Word:string;
@@ -43,6 +47,7 @@ interface MessageType{
 enum ChatType{
     FullScreenType = 1,
     TalkType = 2,
+    OMG = 3,
 }
 
 export default class ChatWnd extends BaseWindow{
@@ -119,7 +124,7 @@ export default class ChatWnd extends BaseWindow{
     private _playerHeadIcon:string = null;
     
     OnLoadToExtension(){
-        
+        this.SetWndLayer(1);
     }
 
     OnCreate(){
@@ -140,6 +145,14 @@ export default class ChatWnd extends BaseWindow{
         this._chooseBoxWnd = this._view.getChild("n28").asGroup;
         this._chooseBoxWndBgBtn = this._view.getChild("n27").asLoader;
         this._chooseBoxList = this._view.getChild("n29").asList;
+        this._OMG_BG = this._view.getChild("n31").asGraph;
+
+
+        this._OMGList = this._view.getChild("n30").asList;
+        this._OMGList.itemRenderer = this.OMGRenderListCall.bind(this);
+        this._OMGList.itemProvider = this.ReturnUrlByOMG.bind(this);
+        this._OMGList.on(fgui.Event.CLICK_ITEM,this.OMG_OnItemClickCall,this);
+        this._OMGList.on(fgui.Event.PULL_UP_RELEASE,this.OnPullUpToRefresh,this);
 
 
         this._chooseBoxWndBgBtn.onClick(this.CloseChooseBoxWnd,this);
@@ -174,21 +187,12 @@ export default class ChatWnd extends BaseWindow{
 
     OnOpen(param:any){
         //进行模式切换
-        this.ResetData();
-        this._recordWaitEff.visible = false;
-        this._recordInitResTime = 3;
-        this._recordUseTime = 0;
-        this._recordPaintData = null;
-        this._FullimageBg.texture = null;
-        this._Message = [];
         this.SwitchUI(param.ShowMethod,param.BgImageURL);
-        this._chatList.numItems = 0;
-        this._chatList.scrollPane.touchEffect = true;
-        this._recordIsNeedPlayerInout = false;
+        this.ResetData();
         this._categoryContentID = param.CategoryContentID;
         this._recordFirstSendData = param;
         //向服务器请求聊天数据
-        this.ReqChatData(param);
+        this.ReqChatData(param,this._recordChatType);
         EventManager.AddEventListener(EventEnum.OpenChooseBox,this.OpenChooseBoxWnd,this);
         EventManager.AddEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
         EventManager.AddEventListener(EventEnum.ScreenShotOver,this.ShowScreenShot,this);
@@ -201,15 +205,8 @@ export default class ChatWnd extends BaseWindow{
         this.ResetData();
         this._WaitEff.stop(true,false);
         this._WaitEff2.stop(true,false);
-        this._recordWaitEff.visible = false;
-        this._recordInitResTime = 3;
-        this._recordUseTime = 0;
-        this._recordPaintData = null;
-        this._chatList.scrollPane.touchEffect = true;
-        this._recordIsNeedPlayerInout = false;
-        this._chatList.numItems = 0;
-        this._Message = [];
         this._FullimageBg.texture = null;
+        this.OMG_OnClose();
         EventManager.RemoveEventListener(EventEnum.ChooseSome,this.PushChooseResCall,this);
         EventManager.RemoveEventListener(EventEnum.ScreenShotOver,this.ShowScreenShot,this);
         EventManager.RemoveEventListener(EventEnum.ReqAgainTest,this.AgainTest,this);
@@ -223,7 +220,276 @@ export default class ChatWnd extends BaseWindow{
         this._chooseBoxList.numItems = 0;
         this._chooseBoxWnd.visible = false;
         this._recordCBData = [];
+        this._recordWaitEff.visible = false;
+        this._recordInitResTime = 3;
+        this._recordUseTime = 0;
+        this._recordPaintData = null;
+        this._FullimageBg.texture = null;
+        this._Message = [];
+        if(this._recordChatType != ChatType.OMG){
+            this._chatList.numItems = 0;
+            this._chatList.scrollPane.touchEffect = true;
+        }
+        this._recordIsNeedPlayerInout = false;
     }
+//-----------------------------OMG模式----------------------------------------
+    private _OMGList:fgui.GList;
+    private _OMG_InPullRefresh:boolean = false;
+    private _OMG_Data:any = null;
+    private _OMG_IsInit:boolean = false;
+    private _OMG_LastItemNum:number = 0;
+    private _OMG_ShareCom:OMG_ShareCom;
+    private _OMG_IsCanClick:boolean = true;
+    private _OMG_ClickItem:ViewBtn;
+    private _ShowListID:number = 2;
+    private _OMG_QuestionData:any;
+    private _OMG_ResData:any;
+    private _OMG_BG:fgui.GGraph;
+
+    
+    public OMG_OnOpen():void{
+        this._OMGList.visible = true;
+        this._OMG_InPullRefresh = false;
+        this._OMG_Data = [];
+        // this._list.scrollPane.scrollTop(true);
+        if(!this._OMG_IsInit){
+            this._OMG_IsInit = true;
+            this._OMGList.numItems = 1;
+            this._OMG_LastItemNum = this._OMGList.numItems;
+            this.ReqDataInId();
+        }
+        else{
+            this._OMG_ShareCom.InitCom(this._recordFirstSendData.Title,
+                // this._OMG_QuestionData.QuestionItem.Content.Text,
+                this._OMG_ResData.BgWidth,
+                this._OMG_ResData.BgHeight);
+            this._OMG_ShareCom.SetCategoryID(this._categoryContentID);
+            this._OMG_LastItemNum = this._OMGList.numItems;
+        }
+        this._OMGList.scrollToView(0);
+    }
+
+    public OMG_OnClose():void{
+        if(this._OMG_ShareCom){
+            this._OMG_ShareCom.CloseSelf();
+        }
+    }
+
+    public OMG_SetShareImg(_texData:cc.RenderTexture):void{
+        //控制显示等待时间
+        this._OMG_ShareCom.SetShowIcon(_texData);
+    }
+
+
+    public OMGRenderListCall(idx:number,obj:fgui.GObject):void{
+        if(idx < this._OMG_LastItemNum){
+            return;
+        }
+        if(idx == 0){
+            let prefab:OMG_ShareCom = obj as OMG_ShareCom;
+            this._OMG_ShareCom = prefab;
+            this._OMG_ShareCom.InitCom(this._recordFirstSendData.Title,
+                // this._OMG_QuestionData.QuestionItem.Content.Text,
+                this._OMG_ResData.BgWidth,
+                this._OMG_ResData.BgHeight);
+            prefab.SetCategoryID(this._categoryContentID);
+        }
+        else{
+            let item:ViewBtn = <ViewBtn>obj;
+            item.SetNumTxt(this._OMG_Data[idx-1].ClickCount);
+            item.SetImage(this._OMG_Data[idx-1].ImgURL);
+            item.SetUUID(this._OMG_Data[idx-1].ID);
+            item.SetStartNum(this._OMG_Data[idx-1].StartOrder);
+            item.SetChatType(this._OMG_Data[idx-1].ShowMethod);
+            item.SetFullScreenBgImgUrl(this._OMG_Data[idx-1].BgImageURL);
+            item.SetAudioUrl(this._OMG_Data[idx-1].BgAudioURL);
+            item.SetTitleTxt(this._OMG_Data[idx-1].ViewTitle);
+            item.SetQuestionTxt(this._OMG_Data[idx-1].Title);
+            item.SetLeftRightTag(this._OMG_Data[idx-1].TitleContegoryID);
+        }
+    }
+
+    //根据ID向服务器请求相应的数据
+    public ReqDataInId():void{
+        if(this._OMG_InPullRefresh){
+            let footer:ScrollPaneUp = this._OMGList.scrollPane.footer as ScrollPaneUp;
+            footer.SetRefreshState(2);
+            this._OMGList.scrollPane.lockFooter(75);
+        }
+        let reqData:object = {};
+        reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
+        reqData["CategoryID"] = this._ShowListID;
+        reqData["Offset"] = this._OMGList.numItems - 1;
+        let url = "";
+        if(ConfigMgr.IsTest){
+            url = "/quce_test_server/user/GetCategoryContent";
+        }
+        else{
+            url = "/quce_server/user/GetCategoryContent";
+        }
+        MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqListDataSuccess,this.ReqListDataDef);
+    }
+
+    //重置下拉刷新组件
+    private ResetRefreshCom():void{
+        let footer:ScrollPaneUp = this._OMGList.scrollPane.footer as ScrollPaneUp;
+        footer.SetRefreshState(0);
+        this._OMGList.scrollPane.lockFooter(0);
+    }
+
+    //请求列表数据成功
+    public ReqListDataSuccess(param:any):void{
+        this._OMG_IsInit = true;
+        let data = param.data.CategoryContentInfo;
+        // console.log("请求列表数据",data);
+        if(data != null){
+            if(this._OMG_InPullRefresh){
+                this._OMG_InPullRefresh = false;
+                let footer:ScrollPaneUp = this._OMGList.scrollPane.footer as ScrollPaneUp;
+                footer.SetRefreshState(3);
+                this._OMGList.scrollPane.lockFooter(75);
+                DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
+            }
+            this._OMG_Data = this._OMG_Data.concat(data);
+            this._recordLastNum = this._OMGList.numItems;
+            this._OMGList.numItems += data.length;
+            this._OMGList.ensureBoundsCorrect();
+        }
+        else{
+            if(this._OMG_InPullRefresh){
+                this._OMG_InPullRefresh = false;
+                let footer:ScrollPaneUp = this._OMGList.scrollPane.footer as ScrollPaneUp;
+                footer.SetRefreshState(4);
+                this._OMGList.scrollPane.lockFooter(75);
+                DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
+            }
+        }
+        
+    }
+
+    //请求列表数据失败
+    public ReqListDataDef():void{
+        if(this._OMG_InPullRefresh){
+            this._OMG_InPullRefresh = false;
+            let footer:ScrollPaneUp = this._OMGList.scrollPane.footer as ScrollPaneUp;
+            footer.SetRefreshState(4);
+            this._OMGList.scrollPane.lockFooter(75);
+            DelayTimeManager.AddDelayOnce(1, this.ResetRefreshCom, this);
+        }
+    }
+
+    public OMG_OnItemClickCall(item:fgui.GObject):void{
+        let idx = this._OMGList.getChildIndex(item);
+        if(idx == 0){
+            return;
+        }
+        let itemObj:ViewBtn = <ViewBtn>item;
+        if(this._OMG_IsCanClick){
+            this._OMG_IsCanClick = false;
+            this._OMG_ClickItem = itemObj;
+            //向服务器请求增加点击条目
+            let reqData:object = {};
+            reqData["ID"] = itemObj.GetUUID();
+            reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
+            let url = "";
+            if(ConfigMgr.IsTest){
+                url = "/quce_test_server/user/ClickCategoryContent";
+            }
+            else{
+                url = "/quce_server/user/ClickCategoryContent";
+            }
+            MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqClickAddNumSuccess,this.ReqClickAddNumDef);
+        }
+    }
+
+    //请求点击量增加成功
+    public ReqClickAddNumSuccess(param:any):void{
+        let data = param.data;
+        let addNum:number = parseInt(data.AddNum);
+        this._OMG_ClickItem.AddNumTxt(addNum);
+        this._OMG_IsCanClick = true;        
+
+        let openData:object = {};
+        openData["NextOrder"] = this._OMG_ClickItem.GetStartNum();
+        openData["CategoryContentID"] = this._OMG_ClickItem.GetUUID();
+        openData["ShowMethod"] = this._OMG_ClickItem.GetChatType();
+        openData["BgImageURL"] = this._OMG_ClickItem.GetFullScreenBgImgUrl();
+        openData["BgAudioURL"] = this._OMG_ClickItem.GetAudioUrl();
+        openData["Title"] = this._OMG_ClickItem.GetQuestionTxt();
+        //设置分享数据
+        let _idx = this._OMGList.getChildIndex(this._OMG_ClickItem);
+        SDKManager.GetInstance().SetShareData(this._OMG_Data[_idx-1]);
+        this.OnClose();
+        this.OnOpen(openData);
+    }
+
+    //请求点击量增加失败
+    public ReqClickAddNumDef():void{
+        this._OMG_IsCanClick = true;
+    }
+
+    private OnPullUpToRefresh():void{
+        let footer:ScrollPaneUp = <ScrollPaneUp>this._OMGList.scrollPane.footer;
+        if(footer.ReadyToRefresh()){
+            footer.SetRefreshState(2);
+            this._OMGList.scrollPane.lockFooter(75);
+            this._OMG_InPullRefresh = true;            
+            //向服务器请求数据
+            this.ReqDataInId();
+        }
+    }
+
+    public ReturnUrlByOMG(idx:number):string{
+        if(idx == 0){
+            return "ui://Chat/OMG_ShareCom";
+        }
+        else{
+            return "ui://Chat/viewBtnNew"
+        }
+    }
+
+    //请求数据成功
+    public OMG_ReqDataSuccess(param:any):void{
+        this._OMG_QuestionData = param.data;
+        ConfigMgr.GetInstance().SetRecordInput(SDKManager.GetInstance().GetPlayerName());
+        let reqData: object = {};
+        reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
+        reqData["CategoryContentID"] = this._categoryContentID;
+        reqData["InputStr"] = SDKManager.GetInstance().GetPlayerName();
+        let url = "";
+        if(ConfigMgr.IsTest){
+            url = "/quce_test_server/user/GetResult";
+        }
+        else{
+            url = "/quce_server/user/GetResult";
+        }
+        MessageManager.GetInstance().SendMessage(reqData, url, this, this.OMG_ReqResSuccess);
+    }
+
+    //请求结果成功
+    public OMG_ReqResSuccess(param:any):void{
+        this._OMG_ResData = param.data;
+        //在这里进行设置标题，描述以及图片大小和播放等待动画
+        this._recordUseTime = new Date().getTime();
+
+        this.OMG_OnOpen();
+        WindowManager.GetInstance().OpenWindow<EndWnd>("EndWnd", "EndWnd", EndWnd, this._OMG_ResData, 0);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //--------------------------------------------------------------------
 //-----------星座类选项框模式
@@ -243,10 +509,11 @@ export default class ChatWnd extends BaseWindow{
         this._recordCBData = _data.param.GetServerData();
         this._chooseBoxList.numItems = this._recordCBData.length;
         this._chooseBoxList.ensureBoundsCorrect();
+        this._chooseBoxList.resizeToFit();
         for(let i = 0;i < this._chooseBoxList.numItems;i++){
             let prefab:ChooseBoxPrefab = this._chooseBoxList.getChildAt(i) as ChooseBoxPrefab;
             if(this._chooseBoxList.isChildInView(prefab)){
-                prefab.PlayEff(i*0.2);
+                prefab.PlayEff(i*0.1);
             }
         }
     }
@@ -262,6 +529,9 @@ export default class ChatWnd extends BaseWindow{
     //选项的点击回调
     public BoxClickCall(obj:fgui.GObject):void{
         let clickItem:ChooseBoxPrefab = obj as ChooseBoxPrefab;
+        if(!clickItem.GetIsShow()){
+            return;
+        }
         let idx = this._chooseBoxList.getChildIndex(clickItem);
         this._recordChooseBoxWnd.SetNowChooseData(idx,this._recordCBData[idx].DescriptionText);
         this.CloseChooseBoxWnd();
@@ -275,6 +545,8 @@ export default class ChatWnd extends BaseWindow{
         this._recordChatType = _type;
         this._FullList.visible = false;
         this._talkList.visible = false;
+        this._OMGList.visible = false;
+        this._OMG_BG.visible = false;
         switch(_type){
             case ChatType.FullScreenType:{
                 this._chatList = this._FullList;
@@ -290,6 +562,12 @@ export default class ChatWnd extends BaseWindow{
                 this._FullimageBg.visible = false;
                 this._FullimgBg2.visible = false;
                 break;
+            }
+            case ChatType.OMG:{
+                this._OMG_BG.visible = true;
+                this._chatList = this._OMGList;
+                this._FullimageBg.visible = false;
+                this._FullimgBg2.visible = false;
             }
         }
         this._chatList.visible = true;
@@ -308,7 +586,13 @@ export default class ChatWnd extends BaseWindow{
             reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
             reqData["CategoryContentID"] = this._categoryContentID;
             reqData["InputStr"] = _txt;
-            let url = "/quce_server/user/GetResult";
+            let url = "";
+            if(ConfigMgr.IsTest){
+                url = "/quce_test_server/user/GetResult";
+            }
+            else{
+                url = "/quce_server/user/GetResult";
+            }
             this._recordUseTime = new Date().getTime();
             this._recordWaitEff.visible = true;
             this._WaitEff.play(()=>{
@@ -320,13 +604,19 @@ export default class ChatWnd extends BaseWindow{
 
     //再测一次
     public AgainTest():void{
-        this._chatList.numItems = 0;
+        if(this._recordChatType != ChatType.OMG){
+            this._chatList.numItems = 0;
+        }
         this._Message = [];
-        this.ReqChatData(this._recordFirstSendData);
+        this.ReqChatData(this._recordFirstSendData,this._recordChatType);
     }
 
     //返回到选择界面
     public ReturnChooseWnd():void{
+        if(StartWnd._IsJumpToShareWnd){
+            StartWnd._IsJumpToShareWnd = false;
+            EventManager.DispatchEvent(EventEnum.ReqJoinToChooseWnd);
+        }
         WindowManager.GetInstance().CloseWindow<ChatWnd>("ChatWnd",this,ChatWnd);
     }
 
@@ -334,41 +624,55 @@ export default class ChatWnd extends BaseWindow{
     //全屏模式直接出结果图
     public ShowScreenShot(data:any){
         this._recordPaintData = data;
-        this._recordUseTime = (new Date().getTime() - this._recordUseTime)/1000;
-        if(CC_DEBUG){
-            console.log("使用时间为",this._recordUseTime);
-        }
-        //实际消耗时间大于规定秒数，立马弹出结果
-        if(this._recordUseTime > this._recordInitResTime){
+        if(this._recordChatType == ChatType.TalkType){
             this.ShowRes();
         }
-        //消耗时间小于1秒，则（相减）再等待一定时间
         else{
-            let waitTime = this._recordInitResTime - this._recordUseTime;
+            this._recordUseTime = (new Date().getTime() - this._recordUseTime)/1000;
             if(CC_DEBUG){
-                console.log("需要等待时间：",waitTime);
+                console.log("使用时间为",this._recordUseTime);
             }
-            DelayTimeManager.AddDelayOnce(waitTime,this.ShowRes,this);
+            //实际消耗时间大于规定秒数，立马弹出结果
+            if(this._recordUseTime > this._recordInitResTime){
+                this.ShowRes();
+            }
+            //消耗时间小于1秒，则（相减）再等待一定时间
+            else{
+                let waitTime = this._recordInitResTime - this._recordUseTime;
+                if(CC_DEBUG){
+                    console.log("需要等待时间：",waitTime);
+                }
+                DelayTimeManager.AddDelayOnce(waitTime,this.ShowRes,this);
+            }
         }
+        // else if(this._recordChatType == ChatType.OMG){
+        //     this.OMG_SetShareImg(this._recordPaintData.param);
+        // }
+        // else{
+        //     console.log("配置显示模式错误！",this._recordChatType);
+        // }
     }
 
     //弹出结果界面
     public ShowRes():void{
-        this._recordWaitEff.visible = false;
-        this._WaitEff.stop(true,false);
-        this._WaitEff2.stop(true,false);
         let data:any = this._recordPaintData;
         if(this._recordChatType == ChatType.TalkType){
             this.SimulatSendSprite(data.param,data.param2,data.param3);
             this.SimulateSendServerWord("Click above image for details");
         }
         else if(this._recordChatType == ChatType.FullScreenType){
+            this._recordWaitEff.visible = false;
+            this._WaitEff.stop(true,false);
+            this._WaitEff2.stop(true,false);
             let _recordNowResData:object = {};
             _recordNowResData["Tex"] = data.param;
             _recordNowResData["Height"] = data.param3;
             _recordNowResData["Width"] = data.param2;
             _recordNowResData["CategoryContentID"] = this._categoryContentID;
             WindowManager.GetInstance().OpenWindow<ShareWnd>("EndWnd","ShareWnd",ShareWnd,_recordNowResData);
+        }
+        else if(this._recordChatType == ChatType.OMG){
+            this.OMG_SetShareImg(this._recordPaintData.param);
         }
     }
 
@@ -415,7 +719,13 @@ export default class ChatWnd extends BaseWindow{
             reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
             reqData["CategoryContentID"] = this._categoryContentID;
             reqData["InputStr"] = this._recordWillSendTxt;
-            let url = "/quce_server/user/GetResult";
+            let url = "";
+            if(ConfigMgr.IsTest){
+                url = "/quce_test_server/user/GetResult";
+            }
+            else{
+                url = "/quce_server/user/GetResult";
+            }
             this._recordUseTime = new Date().getTime();
             this._recordWaitEff.visible = true;
             this._WaitEff.play(()=>{
@@ -444,14 +754,25 @@ export default class ChatWnd extends BaseWindow{
     //模拟服务器发送文字
 
     //向服务器请求数据
-    public ReqChatData(param:any):void{
+    public ReqChatData(param:any,ShowMethod?:number):void{
         let reqData:object = {};
         reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
         reqData["NextOrder"] = param.NextOrder;
         reqData["CategoryContentID"] = param.CategoryContentID;
-        let url = "/quce_server/user/QuizChatStep";
+        let url = "";
+        if(ConfigMgr.IsTest){
+            url = "/quce_test_server/user/QuizChatStep";
+        }
+        else{
+            url = "/quce_server/user/QuizChatStep";
+        }
+        if(ShowMethod == ChatType.OMG){
+            MessageManager.GetInstance().SendMessage(reqData,url,this,this.OMG_ReqDataSuccess);
+        }
+        else{
+            MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqDataSuccess,this.ReqDataDef);
+        }
 
-        MessageManager.GetInstance().SendMessage(reqData,url,this,this.ReqDataSuccess,this.ReqDataDef);
     }
 
     //请求数据成功
@@ -540,7 +861,13 @@ export default class ChatWnd extends BaseWindow{
             reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
             reqData["CategoryContentID"] = this._categoryContentID;
             reqData["InputStr"] = resStr;
-            let url = "/quce_server/user/GetResult";
+            let url = "";
+            if(ConfigMgr.IsTest){
+                url = "/quce_test_server/user/GetResult";
+            }
+            else{
+                url = "/quce_server/user/GetResult";
+            }
             this._recordUseTime = new Date().getTime();
             this._recordWaitEff.visible = true;
             this._WaitEff.play(()=>{

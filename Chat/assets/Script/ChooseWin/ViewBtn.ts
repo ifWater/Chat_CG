@@ -10,10 +10,10 @@ export default class ViewBtn extends fgui.GButton{
     private _chatType:number;
     private _bgImageUrl:string;
     private _bgAudio:string;
-    private _titleTxt:fgui.GTextField;
+    private _titleTxt:fgui.GRichTextField;
 
-    private _hot:fgui.GGroup;
-    private _new:fgui.GGroup;
+    private _hot:fgui.GImage;
+    private _new:fgui.GImage;
 
     //记录问题的文本
     private _questionTxt:string;
@@ -24,9 +24,9 @@ export default class ViewBtn extends fgui.GButton{
     protected onConstruct():void{
         this._numTxt = this.getChild("n4").asTextField;
         this._sprite = this.getChild("n0").asLoader;
-        this._titleTxt = this.getChild("n6").asTextField;
-        this._hot = this.getChild("n12").asGroup;
-        this._new = this.getChild("n9").asGroup;
+        this._titleTxt = this.getChild("n6").asRichTextField;
+        this._hot = this.getChild("n12").asImage;
+        this._new = this.getChild("n9").asImage;
     }
 
     public SetNumTxt(txt:string):void{

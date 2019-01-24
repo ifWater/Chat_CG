@@ -9,6 +9,7 @@ import WindowManager from '../Base/WindowManager';
 import SearchWnd from './SearchWnd';
 import ChooseWin from '../ChooseWin/ChooseWin';
 import SDKManager from '../Base/SDKManager';
+import ConfigMgr from '../Base/ConfigMgr';
 
 export default class SearchEndWnd extends BaseWindow{
     private _list:fgui.GList;
@@ -30,6 +31,9 @@ export default class SearchEndWnd extends BaseWindow{
 
     //记录是否是第一次请求
     private _recordFirstRes:boolean = true;
+
+    private _isCanReturn:boolean = true;
+    private _isCanSearch:boolean = true;
 
     OnLoadToExtension(){
        
@@ -68,11 +72,19 @@ export default class SearchEndWnd extends BaseWindow{
     }
 
     public ClickInputBtn():void{
-        WindowManager.GetInstance().OpenWindow<SearchWnd>("SearchWnd","SearchWnd",SearchWnd,null,1);
+        if(this._isCanSearch){
+            this._isCanSearch = false;
+            WindowManager.GetInstance().OpenWindow<SearchWnd>("SearchWnd","SearchWnd",SearchWnd,null,1);
+            this._isCanSearch = true;
+        }
     }
 
     public ClickReturnBtn():void{
-        WindowManager.GetInstance().OpenWindow<ChooseWin>("Package1","MainUI", ChooseWin,null,1);
+        if(this._isCanReturn){
+            this._isCanReturn = false;
+            WindowManager.GetInstance().OpenWindow<ChooseWin>("Package1","MainUI", ChooseWin,null,1);
+            this._isCanReturn = true;
+        }
     }
 
     //根据ID向服务器请求相应的数据
@@ -86,7 +98,13 @@ export default class SearchEndWnd extends BaseWindow{
         reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
         reqData["Keyword"] = this._recordWord;
         reqData["Offset"] = this._list.numItems;
-        let url:string = "/quce_server/user/Search";
+        let url:string = "";
+        if(ConfigMgr.IsTest){
+            url = "/quce_test_server/user/Search";
+        }
+        else{
+            url = "/quce_server/user/Search";
+        }
         MessageMangager.GetInstance().SendMessage(reqData,url,this,this.ReqListDataSuccess,this.ReqListDataDef);
     }
 
@@ -169,7 +187,13 @@ export default class SearchEndWnd extends BaseWindow{
             let reqData:object = {};
             reqData["ID"] = itemObj.GetUUID();
             reqData["UserID"] = SDKManager.GetInstance().GetPlayerID();
-            let url = "/quce_server/user/ClickCategoryContent";
+            let url = "";
+            if(ConfigMgr.IsTest){
+                url = "/quce_test_server/user/ClickCategoryContent";
+            }
+            else{
+                url = "/quce_server/user/ClickCategoryContent";
+            }
             MessageMangager.GetInstance().SendMessage(reqData,url,this,this.ReqClickAddNumSuccess,this.ReqClickAddNumDef);
         }
     }
@@ -188,6 +212,9 @@ export default class SearchEndWnd extends BaseWindow{
         openData["BgImageURL"] = this._nowClickItem.GetFullScreenBgImgUrl();
         openData["BgAudioURL"] = this._nowClickItem.GetAudioUrl();
         openData["Title"] = this._nowClickItem.GetQuestionTxt();
+        //设置分享数据
+        let _idx = this._list.getChildIndex(this._nowClickItem);
+        SDKManager.GetInstance().SetShareData(this._data[_idx]);
         //打开聊天界面
         WindowManager.GetInstance().OpenWindow<ChatWnd>("Chat","ChatWnd",ChatWnd,openData,1);
 
